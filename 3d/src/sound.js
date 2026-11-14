@@ -24,7 +24,7 @@ function sndTick(dt){
   if(!SND.on) return;
   const ph=S.phase, t=clamp(S.clock/DAYLEN), d=dominant(), hi=d&&doseK(d)>.05;
   const bed=ph==='end'?'end':ph==='play'?(hi?'high':stage()>=1?'worry':t>.62?'night':'hub'):'hub';
-  for(const k of ['hub','night','high','worry','end']) sndLayer(SND.beds,k,'music/'+k+'.mp3',k===bed?.55:0);
+  for(const k of ['hub','night','high','worry','end']) sndLayer(SND.beds,k,'music/'+k+'.mp3',k===bed?.42:0);
   const yard=ph==='play'&&P.z>13.5?1:0, dawn=ph==='card'||ph==='end'?1:0;
   sndLayer(SND.amb,'room','sfx/room.mp3',ph==='play'?.22*(1-yard):0);
   sndLayer(SND.amb,'yard','sfx/yard.mp3',ph==='play'?.3*yard:0);

@@ -53,14 +53,16 @@ function doorway(x,z,day){
   }
 }
 function figure(col){
-  const g=new THREE.Group(), c=hexN(col);
-  const body=prop('person',0,0,{size:[null,1.72,null],uniform:true,tint:c,ei:.22,fb:c}); scene.remove(body); g.add(body);
-  const head=new THREE.Group(); g.add(head);
-  const mark=new THREE.Mesh(new THREE.OctahedronGeometry(.13),new THREE.MeshBasicMaterial({color:0xff6b5d}));
-  mark.position.y=2.05; mark.visible=false; g.add(mark);
+  const g=new THREE.Group(), c=hexN(col), f={g,head:new THREE.Group(),mixer:null,act:null};
+  f.body=prop('person_walk',0,0,{size:[null,1.72,null],uniform:true,tint:c,ei:.12,fb:c,ready:(m,clips)=>{
+    if(!clips||!clips.length) return;
+    f.mixer=new THREE.AnimationMixer(m); f.act=f.mixer.clipAction(clips[0]); f.act.play(); f.act.timeScale=.12;
+  }});
+  scene.remove(f.body); g.add(f.body); g.add(f.head);
+  f.mark=new THREE.Mesh(new THREE.OctahedronGeometry(.13),new THREE.MeshBasicMaterial({color:0xff6b5d})); f.mark.position.y=2.05; f.mark.visible=false; g.add(f.mark);
   const glow=new THREE.PointLight(c,.5,2.5,2); glow.position.y=1.1; g.add(glow);
   scene.add(g);
-  return {g,body,head,mark};
+  return f;
 }
 function ring(x,z,col){
   const m=new THREE.Mesh(new THREE.RingGeometry(.48,.6,32),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.8,side:THREE.DoubleSide,depthWrite:false}));
@@ -96,8 +98,8 @@ function buildWorld(){
   }
   // bedroom
   prop('bed',1.05,1.45,{size:[1.6,.55,2.3],solid:true,fb:0x4a3f6b});
-  prop('desk',5.8,.55,{size:[1.7,.8,.7],ry:Math.PI,solid:true,fb:0x3a2f2a});
-  prop('chair',5.8,1.35,{size:[.55,.9,.55],ry:Math.PI,solid:.45,fb:0x35304a});
+  prop('desk',5.8,.55,{size:[1.7,.8,.7],ry:0,solid:true,fb:0x3a2f2a});
+  prop('chair',5.8,1.35,{size:[.55,.9,.55],ry:0,solid:.45,fb:0x35304a});
   prop('guitar',.45,4.8,{size:[null,1.15,null],ry:Math.PI/2,uniform:true,fb:0xb5651d});
   prop('lamp',6.55,5.45,{size:[.4,1.7,.4],solid:.3,fb:0x35304a});
   prop('rug',3.6,3.4,{size:[2.6,.03,1.8],flat:true,fb:0x3a2c55});
@@ -105,18 +107,18 @@ function buildWorld(){
   prop('shower',7.95,.95,{size:[1.5,2.2,1.5],ry:Math.PI,solid:1.2,fb:0x7fd0e0});
   box(.5,1.1,3.8,10.6,.55,2.4,0x2f3b4a,{solid:true});
   // kitchen
-  for(const x of [12.8,15.6,18.4]) prop('counter',x,.5,{size:[2.8,.9,.7],ry:Math.PI,solid:true,fb:0x3b3430});
-  prop('coffee',12,.5,{size:[.3,.36,.3],y:.9,ry:Math.PI,uniform:true,fb:0x16161a});
+  for(const x of [12.8,15.6,18.4]) prop('counter',x,.5,{size:[2.8,.9,.7],ry:0,solid:true,fb:0x3b3430});
+  prop('coffee',12,.5,{size:[.3,.36,.3],y:.9,ry:0,uniform:true,fb:0x16161a});
   prop('table',15.5,3.1,{size:[1.8,.78,1.1],solid:[1.8,1.1],fb:0x5a4636});
   // hall
   prop('plant',19.4,7.25,{size:[.8,1.4,.8],uniform:true,fb:0x2f9e5b});
   // living room
-  prop('sofa',5.5,13.2,{size:[3,.85,1],ry:Math.PI,solid:true,fb:0x3d4a63});
-  prop('tv',5.5,8.8,{size:[2.2,1.1,.14],y:.55,fb:0x0d0f18});
-  prop('speaker',7.7,9,{size:[.6,1.5,.5],solid:.5,fb:0x16161a}); prop('speaker',3.3,9,{size:[.6,1.5,.5],solid:.5,fb:0x16161a});
+  prop('sofa',2.6,13.2,{size:[3,.85,1],ry:Math.PI,solid:true,fb:0x3d4a63});
+  prop('tv',2.6,8.8,{size:[2.2,1.1,.14],y:.55,fb:0x0d0f18});
+  prop('speaker',4.3,9,{size:[.6,1.5,.5],solid:.5,fb:0x16161a}); prop('speaker',.9,9,{size:[.6,1.5,.5],solid:.5,fb:0x16161a});
   prop('armchair',10.8,13.6,{size:[1,.9,1],ry:-Math.PI/2,solid:true,fb:0x4a2f2a});
   prop('lamp',.7,13.3,{size:[.4,1.7,.4],solid:.3,fb:0x35304a});
-  prop('rug',5.5,11.2,{size:[2.4,.03,1.6],flat:true,fb:0x4a3a22});
+  prop('rug',2.6,11.2,{size:[2.4,.03,1.6],flat:true,fb:0x4a3a22});
   // entry
   prop('rug',16,13.2,{size:[1.4,.03,.8],flat:true,fb:0x3a3344}); prop('lamp',19.3,13.3,{size:[.4,1.7,.4],solid:.3,fb:0x35304a});
   // yard
@@ -129,11 +131,12 @@ function buildWorld(){
   for(const s of SUBS){
     const g=new THREE.Group(), col=hexN(s.a);
     const m=new THREE.Group(); g.add(m);
-    const inner=prop('door',0,0,{size:[.46,.74,.1],tint:col,ei:.9,fb:col}); scene.remove(inner); inner.position.set(0,-.37,0); m.add(inner);
-    const glow=new THREE.Mesh(new THREE.ShapeGeometry(archShape(.34,.6),12),new THREE.MeshBasicMaterial({color:hexN(s.b),transparent:true,opacity:.55,side:THREE.DoubleSide,depthWrite:false}));
-    glow.position.set(0,-.33,0); m.add(glow);
+    const core=new THREE.Mesh(new THREE.OctahedronGeometry(.2,0),new THREE.MeshStandardMaterial({color:col,emissive:col,emissiveIntensity:1.5,roughness:.25,metalness:.1}));
+    const shell=new THREE.Mesh(new THREE.IcosahedronGeometry(.33,1),new THREE.MeshPhysicalMaterial({color:hexN(s.b),transparent:true,opacity:.3,roughness:.08,metalness:0,transmission:.5,side:THREE.DoubleSide,depthWrite:false}));
+    m.add(core); m.add(shell);
+    const plinth=new THREE.Mesh(new THREE.CylinderGeometry(.26,.32,.1,24),M(0x14121f,{em:col,ei:.3})); plinth.position.y=-1.25; g.add(plinth);
     const halo=new THREE.Mesh(new THREE.RingGeometry(.3,.36,24),new THREE.MeshBasicMaterial({color:hexN(s.b),transparent:true,opacity:.7,side:THREE.DoubleSide,depthWrite:false}));
-    halo.rotation.x=-Math.PI/2; halo.position.y=-1.2; g.add(halo);
+    halo.rotation.x=-Math.PI/2; halo.position.y=-1.19; g.add(halo);
     const pl=new THREE.PointLight(col,.9,3.2,2); pl.position.y=-.1; g.add(pl);
     g.position.set(s.x.pos[0],1.3,s.x.pos[1]); scene.add(g);
     tokens[s.id]={g,m,s};
@@ -236,11 +239,12 @@ const tells=()=>load()*(S.shower>0?.5:1);
 const stage=()=>S.worry>=66?2:S.worry>=33?1:0;
 const STAGES=['They do not know','They have noticed','They are worried'];
 function dominant(){ let b=null,bv=0; for(const d of S.doses){ const v=d.load*clamp(1-d.t/d.dur); if(v>bv){ bv=v; b=d; } } return b; }
-function addJoy(v){ S.joy=Math.max(0,S.joy+v); S.dayJoy+=v; if(v>0) popGain(v); }
+function addJoy(v){ S.joy=Math.max(0,S.joy+v); S.dayJoy+=v; if(v>0){ popGain(v); S.idle=0; } }
+function doseJoy(s){ const n=S.today[s.id]||0, tot=S.taken[s.id]||0, dom=dominant(), combo=dom&&dom.s!==s?comboOf(dom.s,s):null; return s.x.joy*Math.pow(.6,n)*Math.pow(.88,tot)*(combo?combo.yield:1)*(S.well<.2?.4:1); }
 function takeDose(s,forced){
   const n=S.today[s.id]||0, tot=S.taken[s.id]||0, dom=dominant();
   const combo=dom&&dom.s!==s?comboOf(dom.s,s):null;
-  const j=s.x.joy*Math.pow(.6,n)*Math.pow(.88,tot)*(combo?combo.yield:1)*(S.well<.2?.4:1);
+  const j=doseJoy(s);
   S.today[s.id]=n+1; S.taken[s.id]=tot+1; S.dayDoses++; S.total++; if(!S.order.includes(s.id)) S.order.push(s.id);
   S.doses.push({s,t:0,dur:s.x.dur,load:s.x.load*(combo?Math.min(1.6,combo.cost):1),motes:Math.round(j*.6),spawn:0});
   addJoy(j*.4);
@@ -326,7 +330,7 @@ function updNpc(n,dt){
   else {
     const w=path[n.i%path.length], dx=w[0]-n.x, dz=w[1]-n.z, d=Math.hypot(dx,dz);
     if(d<.12){ n.wait=w[2]; n.i=(n.i+1)%path.length; }
-    else { const sp=1.35; n.x+=dx/d*Math.min(d,sp*dt); n.z+=dz/d*Math.min(d,sp*dt); n.face=Math.atan2(dx,dz); }
+    else { const sp=1.35; n.x+=dx/d*Math.min(d,sp*dt); n.z+=dz/d*Math.min(d,sp*dt); n.face=Math.atan2(dx,dz); n.moving=true; }
   }
   const d=dist(n,P); n.sees=d<6.5&&los(n.x,n.z,P.x,P.z);
   if(n.sees&&(n.wait>0||stage()>0)) n.face=Math.atan2(P.x-n.x,P.z-n.z);
@@ -338,7 +342,8 @@ function updNpc(n,dt){
     else if(n.cool<=0&&d<3.2) say(n,stage()===2?pick(SAY.worried):pick(SAY.calm[n.d.id]),3);
   }
   if(n.sayT>0){ n.sayT-=dt; if(n.sayT<=0) n.el.classList.remove('on'); }
-  n.f.g.position.set(n.x,Math.abs(Math.sin(G*6+n.x))*(n.wait>0?0:.04),n.z); n.f.g.rotation.y=n.face;
+  n.f.g.position.set(n.x,0,n.z); n.f.g.rotation.y=n.face;
+  if(n.f.mixer){ n.f.act.timeScale+=((n.moving?1.1:.12)-n.f.act.timeScale)*Math.min(1,dt*6); n.f.mixer.update(dt); } n.moving=false;
   n.f.mark.visible=stage()===2; n.f.mark.rotation.y=G*2;
   if(n.el.classList.contains('on')) place(n.el,n.x,2.3,n.z);
 }
@@ -385,8 +390,8 @@ function findNear(){
   return best;
 }
 function promptFor(st){
-  if(st.type==='sub') return {text:st.s.name,time:.7};
-  if(st.type==='task'){ const k=taskMult(st.t); return {text:st.t.name,time:1.8*k.slow}; }
+  if(st.type==='sub') return {text:st.s.name+' · +'+Math.round(doseJoy(st.s))+' joy',time:.7};
+  if(st.type==='task'){ const k=taskMult(st.t); return {text:st.t.name+' · +'+Math.round(st.t.joy*k.m)+' joy',time:1.8*k.slow}; }
   if(st.type==='bed') return {text:'Sleep, and end '+DAYS[S.day],time:1.4};
   return {text:'Tell her the truth',time:2};
 }
@@ -411,6 +416,7 @@ function target(){
 
 /* ---------- a day ---------- */
 function startDay(d){
+  S.idle=0; S.idleSaid=false; S.itchSaid=false;
   Object.assign(S,{day:d,clock:0,doses:[],today:{},done:{},dayJoy:0,dayDoses:0,lostToday:0,talked:false,shower:0,chain:0,cool:0,warned:false,goalSaid:false});
   const bo=S.blackout; S.blackout=false;
   P.x=bo?(d>=1?9:9):2.4; P.z=bo?(d>=1?4.2:7.2):1.6; P.vx=P.vz=0; C=null; fade=1; fadeTo=null; inputQ.length=0; yaw=bo?R(TAU):3.68; pitch=-.05;
@@ -505,6 +511,9 @@ function updPlay(dt){
   S.doses=S.doses.filter(d=>d.t<d.dur);
   if(!S.doses.length) S.chain=0;
   musicFor();
+  // standing still is not free: the well drains, faster the longer it goes and the deeper the habit
+  S.idle=(S.idle||0)+dt;
+  if(S.idle>18&&!C){ const k=1+(S.idle-18)/30; S.well=clamp(S.well-dt*.006*k*(1+S.habit*2)); if(!S.idleSaid){ S.idleSaid=true; caption(STORY.idle,4); } if(S.idle>45&&!S.itchSaid){ S.itchSaid=true; caption(STORY.itch,4); sndFx('heart',.6); } }
   // what the body will do
   let spd=1, acc=12, sway=0, lag=0;
   for(const d of S.doses){ const k=doseK(d), x=d.s.x; spd*=lerp(1,x.spd,k); acc=Math.min(acc,lerp(12,x.acc||12,k)); if(x.acc>12) acc=lerp(acc,x.acc,k); sway=Math.max(sway,(x.sway||0)*k); lag=Math.max(lag,(x.lag||0)*k); }

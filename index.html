@@ -314,6 +314,7 @@ h2{font:700 clamp(26px,4.8vw,72px)/1.02 var(--display);font-style:normal;letter-
 </main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
 <script>
 /* ---------- shaders: one world per door ---------- */
 const VERT = `#version 300 es
@@ -815,20 +816,20 @@ const WIN = { lights:5, well:.7, tide:.2 };
 
 /* ---------- the house: what each substance does here, the people, the routine. edit freely ---------- */
 const X3 = {
-  md:{load:.55,hab:.04,joy:9,dur:24,pos:[11.5,20.8],day:2,ov:.45,trail:.6,ca:.006,sat:1.4,vig:.25,spd:1.1},
-  ps:{load:.6,hab:.01,joy:9,dur:30,pos:[12.7,20.8],day:2,ov:.6,kal:.45,wob:.6,trail:.8,ca:.008,sat:1.5,zoom:1,spd:.85},
-  cn:{load:.35,hab:.03,joy:5,dur:26,pos:[3.6,.8],day:0,ov:.4,trail:.85,sat:1.1,vig:.35,spd:.6,acc:2.5},
-  al:{load:.4,hab:.06,joy:5,dur:24,pos:[10.8,13.1],day:1,ov:.3,wob:1.3,dbl:.012,trail:.5,ca:.006,spd:.9,acc:4,sway:1},
-  kt:{load:.55,hab:.06,joy:6,dur:22,pos:[15.1,20.8],day:2,ov:.45,scan:1,pix:.5,ca:.012,sat:.55,vig:.5,spd:.6,lag:.6},
-  cf:{load:.12,hab:.02,joy:2,dur:20,pos:[12,.8],day:0,ov:.18,sat:1.2,spd:1.25},
-  nc:{load:.15,hab:.05,joy:2,dur:14,pos:[6.3,5.2],day:0,ov:.3,sat:.85,vig:.45,spd:1},
-  co:{load:.5,hab:.1,joy:7,dur:14,pos:[13.9,20.8],day:2,ov:.4,ca:.012,sat:.8,vig:.45,spd:1.6,acc:30},
-  ad:{load:.35,hab:.06,joy:4,dur:26,pos:[10.4,2.4],day:1,ov:.3,vig:.75,sat:1.1,spd:1.3},
-  dx:{load:.35,hab:.06,joy:4,dur:26,pos:[10.4,3.8],day:1,ov:.3,vig:.4,spd:1.3},
-  xn:{load:.45,hab:.08,joy:3,dur:26,pos:[10.4,1],day:1,ov:.4,trail:.9,sat:.6,vig:.2,spd:.55,acc:2.5},
-  cb:{load:.5,hab:.02,joy:8,dur:24,pos:[16.3,20.8],day:2,ov:.5,kal:.2,trail:.85,ca:.01,sat:1.5,spd:1},
-  mm:{load:.55,hab:.1,joy:7,dur:16,pos:[17.5,20.8],day:2,ov:.45,ca:.014,sat:1.3,spd:1.4},
-  dm:{load:.7,hab:0,joy:9,dur:12,pos:[18.7,20.8],day:2,ov:.85,kal:.8,zoom:2,trail:.9,ca:.016,sat:1.6,spd:.12}
+  md:{load:.55,hab:.04,joy:12,dur:24,pos:[11.5,20.8],day:2,ov:.45,trail:.6,ca:.006,sat:1.4,vig:.25,spd:1.1},
+  ps:{load:.6,hab:.01,joy:12,dur:30,pos:[12.7,20.8],day:2,ov:.6,kal:.45,wob:.6,trail:.8,ca:.008,sat:1.5,zoom:1,spd:.85},
+  cn:{load:.35,hab:.03,joy:8,dur:26,pos:[3.6,.8],day:0,ov:.4,trail:.85,sat:1.1,vig:.35,spd:.6,acc:2.5},
+  al:{load:.4,hab:.06,joy:8,dur:24,pos:[10.8,13.1],day:1,ov:.3,wob:1.3,dbl:.012,trail:.5,ca:.006,spd:.9,acc:4,sway:1},
+  kt:{load:.55,hab:.06,joy:9,dur:22,pos:[15.1,20.8],day:2,ov:.45,scan:1,pix:.5,ca:.012,sat:.55,vig:.5,spd:.6,lag:.6},
+  cf:{load:.12,hab:.02,joy:3,dur:20,pos:[12,.8],day:0,ov:.18,sat:1.2,spd:1.25},
+  nc:{load:.15,hab:.05,joy:4,dur:14,pos:[6.3,5.2],day:0,ov:.3,sat:.85,vig:.45,spd:1},
+  co:{load:.5,hab:.1,joy:11,dur:14,pos:[13.9,20.8],day:2,ov:.4,ca:.012,sat:.8,vig:.45,spd:1.6,acc:30},
+  ad:{load:.35,hab:.06,joy:7,dur:26,pos:[10.4,2.4],day:1,ov:.3,vig:.75,sat:1.1,spd:1.3},
+  dx:{load:.35,hab:.06,joy:7,dur:26,pos:[10.4,3.8],day:1,ov:.3,vig:.4,spd:1.3},
+  xn:{load:.45,hab:.08,joy:6,dur:26,pos:[10.4,1],day:1,ov:.4,trail:.9,sat:.6,vig:.2,spd:.55,acc:2.5},
+  cb:{load:.5,hab:.02,joy:11,dur:24,pos:[16.3,20.8],day:2,ov:.5,kal:.2,trail:.85,ca:.01,sat:1.5,spd:1},
+  mm:{load:.55,hab:.1,joy:10,dur:16,pos:[17.5,20.8],day:2,ov:.45,ca:.014,sat:1.3,spd:1.4},
+  dm:{load:.7,hab:0,joy:13,dur:12,pos:[18.7,20.8],day:2,ov:.85,kal:.8,zoom:2,trail:.9,ca:.016,sat:1.6,spd:.12}
 };
 SUBS.forEach(s=>{ s.x=X3[s.id]; });
 
@@ -837,13 +838,13 @@ const DAYLEN = 130;          // seconds of play from 08:00 to midnight
 const GOALS = [16,24,32,38];   // joy needed each day to keep it
 
 const TASKS = [
-  {id:'work',name:'Do the coursework',x:5.8,z:1.7,day:0,joy:6,kind:'focus',room:'bed',line:'Two pages. They were good pages.'},
-  {id:'guitar',name:'Play guitar',x:1.4,z:4.8,day:0,joy:7,kind:'play',room:'bed',line:'I played the same four chords and meant them.'},
-  {id:'eat',name:'Eat with Mom',x:15.5,z:4.3,day:0,joy:6,kind:'bond',room:'kit',well:.2,line:'She asked about my week. I told her some of it.'},
-  {id:'plant',name:'Water the plant',x:18.7,z:7.25,day:0,joy:3,kind:'care',room:'hall',line:'It had a new leaf.'},
-  {id:'shower',name:'Take a shower',x:8.1,z:1.3,day:1,joy:3,kind:'care',room:'bath',well:.15,line:'Ten minutes of hot water. Nobody could tell after that.'},
-  {id:'tv',name:'Watch the game with Dad',x:5.5,z:11.5,day:1,joy:6,kind:'bond',room:'liv',line:'We yelled at the same referee.'},
-  {id:'hoops',name:'Shoot hoops with Jay',x:4.5,z:18,day:2,joy:8,kind:'play',room:'yard',well:.1,line:'I was out of breath and it felt like mine.'}
+  {id:'work',name:'Do the coursework',x:5.8,z:1.7,day:0,joy:3,kind:'focus',room:'bed',line:'Two pages. They were good pages.'},
+  {id:'guitar',name:'Play guitar',x:1.4,z:4.8,day:0,joy:4,kind:'play',room:'bed',line:'I played the same four chords and meant them.'},
+  {id:'eat',name:'Eat with Mom',x:15.5,z:4.3,day:0,joy:3,kind:'bond',room:'kit',well:.2,line:'She asked about my week. I told her some of it.'},
+  {id:'plant',name:'Water the plant',x:18.7,z:7.25,day:0,joy:2,kind:'care',room:'hall',line:'It had a new leaf.'},
+  {id:'shower',name:'Take a shower',x:8.1,z:1.3,day:1,joy:2,kind:'care',room:'bath',well:.15,line:'Ten minutes of hot water. Nobody could tell after that.'},
+  {id:'tv',name:'Watch the game with Dad',x:2.6,z:11.5,day:1,joy:3,kind:'bond',room:'liv',line:'We yelled at the same referee.'},
+  {id:'hoops',name:'Shoot hoops with Jay',x:4.5,z:18,day:2,joy:4,kind:'play',room:'yard',well:.1,line:'I was out of breath and it felt like mine.'}
 ];
 
 const NPCS = [
@@ -868,6 +869,8 @@ const SAY = {
 
 const STORY = {
   open:'Thursday. I kept it in my room, and I kept it quiet.',
+  idle:'Nothing was happening. That was the problem.',
+  itch:'Sitting still had started to cost something.',
   days:['','Friday. The rest of the house opened up, and so did the cabinets.','Saturday. Jay texted. Come outside.','Sunday. Whatever I was building, this was the day it showed.'],
   locked:['','Not today. Friday.','Not yet. Saturday.'],
   goal:'That was enough for one day. Bed, or a little more.',
@@ -1262,7 +1265,9 @@ const VO={
   "endClear": "me_endClear.mp3",
   "endGrey": "me_endGrey.mp3",
   "endKnown": "me_endKnown.mp3",
-  "endHooked": "me_endHooked.mp3"
+  "endHooked": "me_endHooked.mp3",
+  "idle": "me_idle.mp3",
+  "itch": "me_itch.mp3"
  }
 };
 /* ---------- generated audio: music beds, ambience, voice (ElevenLabs) layered over the procedural sfx ---------- */
@@ -1291,7 +1296,7 @@ function sndTick(dt){
   if(!SND.on) return;
   const ph=S.phase, t=clamp(S.clock/DAYLEN), d=dominant(), hi=d&&doseK(d)>.05;
   const bed=ph==='end'?'end':ph==='play'?(hi?'high':stage()>=1?'worry':t>.62?'night':'hub'):'hub';
-  for(const k of ['hub','night','high','worry','end']) sndLayer(SND.beds,k,'music/'+k+'.mp3',k===bed?.55:0);
+  for(const k of ['hub','night','high','worry','end']) sndLayer(SND.beds,k,'music/'+k+'.mp3',k===bed?.42:0);
   const yard=ph==='play'&&P.z>13.5?1:0, dawn=ph==='card'||ph==='end'?1:0;
   sndLayer(SND.amb,'room','sfx/room.mp3',ph==='play'?.22*(1-yard):0);
   sndLayer(SND.amb,'yard','sfx/yard.mp3',ph==='play'?.3*yard:0);
@@ -1308,11 +1313,11 @@ function sndTick(dt){
 
 /* ---------- generated props: Meshy GLB models, fitted into the house ---------- */
 const ASSETS='3d/assets/';
-const propCache={}, propQueue=[];
+const propCache={}, propAnims={};
 function loadProp(name){
   if(!propCache[name]) propCache[name]=new Promise((ok,bad)=>{
     if(!THREE.GLTFLoader){ bad(new Error('no loader')); return; }
-    new THREE.GLTFLoader().load(ASSETS+name+'.glb',g=>ok(g.scene),undefined,bad);
+    new THREE.GLTFLoader().load(ASSETS+name+'.glb',g=>{ propAnims[name]=g.animations||[]; ok(g.scene); },undefined,bad);
   });
   return propCache[name];
 }
@@ -1322,16 +1327,24 @@ function prop(name,x,z,o={}){
   if(o.solid){ const a=Array.isArray(o.solid)?o.solid:o.solid===true?[w||d,d||w]:[o.solid,o.solid], rot=Math.abs(Math.sin(o.ry||0))>.5, sw=rot?a[1]:a[0], sd=rot?a[0]:a[1]; solids.push([x-sw/2,z-sd/2,x+sw/2,z+sd/2]); }
   const fallback=box(w||d||.5,h||.6,d||w||.5,0,(h||.6)/2,0,o.fb||0x3a3350,{solid:false}); scene.remove(fallback); holder.add(fallback);
   loadProp(name).then(src=>{
-    const m=src.clone(true), bb=new THREE.Box3().setFromObject(m), sz=new THREE.Vector3(); bb.getSize(sz);
+    const m=propAnims[name].length&&THREE.SkeletonUtils?THREE.SkeletonUtils.clone(src):src.clone(true), bb=propBounds(m), sz=new THREE.Vector3(); bb.getSize(sz);
     const want=[w,h,d], have=[sz.x,sz.y,sz.z], sc=[0,1,2].map(i=>want[i]?want[i]/Math.max(1e-4,have[i]):null);
     const base=Math.min(...sc.filter(v=>v!==null)); for(let i=0;i<3;i++) if(sc[i]===null) sc[i]=base;
     if(o.uniform){ const u=Math.min(...sc); sc[0]=sc[1]=sc[2]=u; }
     m.scale.set(sc[0],sc[1],sc[2]);
     const c=new THREE.Vector3(); bb.getCenter(c); m.position.set(-c.x*sc[0],-bb.min.y*sc[1],-c.z*sc[2]);
     m.traverse(n=>{ if(n.isMesh){ n.castShadow=!o.flat; n.receiveShadow=true; styleProp(n,o); } });
-    holder.remove(fallback); holder.add(m); if(o.ready) o.ready(m);
+    holder.remove(fallback); holder.add(m); if(o.ready) o.ready(m,propAnims[name]);
   }).catch(e=>console.warn('prop',name,e.message||e));
   return holder;
+}
+// skinned meshes report unposed geometry bounds; measure the skeleton instead
+function propBounds(m){
+  m.updateMatrixWorld(true);
+  const bb=new THREE.Box3(), v=new THREE.Vector3(); let bones=0;
+  m.traverse(n=>{ if(n.isBone){ bones++; bb.expandByPoint(n.getWorldPosition(v)); } });
+  if(bones>3){ const h=bb.max.y-bb.min.y; bb.max.y+=h*.1; bb.min.y-=h*.04; return bb; }
+  return new THREE.Box3().setFromObject(m);
 }
 function styleProp(n,o){
   const mats=Array.isArray(n.material)?n.material:[n.material];
@@ -1416,14 +1429,16 @@ function doorway(x,z,day){
   }
 }
 function figure(col){
-  const g=new THREE.Group(), c=hexN(col);
-  const body=prop('person',0,0,{size:[null,1.72,null],uniform:true,tint:c,ei:.22,fb:c}); scene.remove(body); g.add(body);
-  const head=new THREE.Group(); g.add(head);
-  const mark=new THREE.Mesh(new THREE.OctahedronGeometry(.13),new THREE.MeshBasicMaterial({color:0xff6b5d}));
-  mark.position.y=2.05; mark.visible=false; g.add(mark);
+  const g=new THREE.Group(), c=hexN(col), f={g,head:new THREE.Group(),mixer:null,act:null};
+  f.body=prop('person_walk',0,0,{size:[null,1.72,null],uniform:true,tint:c,ei:.12,fb:c,ready:(m,clips)=>{
+    if(!clips||!clips.length) return;
+    f.mixer=new THREE.AnimationMixer(m); f.act=f.mixer.clipAction(clips[0]); f.act.play(); f.act.timeScale=.12;
+  }});
+  scene.remove(f.body); g.add(f.body); g.add(f.head);
+  f.mark=new THREE.Mesh(new THREE.OctahedronGeometry(.13),new THREE.MeshBasicMaterial({color:0xff6b5d})); f.mark.position.y=2.05; f.mark.visible=false; g.add(f.mark);
   const glow=new THREE.PointLight(c,.5,2.5,2); glow.position.y=1.1; g.add(glow);
   scene.add(g);
-  return {g,body,head,mark};
+  return f;
 }
 function ring(x,z,col){
   const m=new THREE.Mesh(new THREE.RingGeometry(.48,.6,32),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.8,side:THREE.DoubleSide,depthWrite:false}));
@@ -1459,8 +1474,8 @@ function buildWorld(){
   }
   // bedroom
   prop('bed',1.05,1.45,{size:[1.6,.55,2.3],solid:true,fb:0x4a3f6b});
-  prop('desk',5.8,.55,{size:[1.7,.8,.7],ry:Math.PI,solid:true,fb:0x3a2f2a});
-  prop('chair',5.8,1.35,{size:[.55,.9,.55],ry:Math.PI,solid:.45,fb:0x35304a});
+  prop('desk',5.8,.55,{size:[1.7,.8,.7],ry:0,solid:true,fb:0x3a2f2a});
+  prop('chair',5.8,1.35,{size:[.55,.9,.55],ry:0,solid:.45,fb:0x35304a});
   prop('guitar',.45,4.8,{size:[null,1.15,null],ry:Math.PI/2,uniform:true,fb:0xb5651d});
   prop('lamp',6.55,5.45,{size:[.4,1.7,.4],solid:.3,fb:0x35304a});
   prop('rug',3.6,3.4,{size:[2.6,.03,1.8],flat:true,fb:0x3a2c55});
@@ -1468,18 +1483,18 @@ function buildWorld(){
   prop('shower',7.95,.95,{size:[1.5,2.2,1.5],ry:Math.PI,solid:1.2,fb:0x7fd0e0});
   box(.5,1.1,3.8,10.6,.55,2.4,0x2f3b4a,{solid:true});
   // kitchen
-  for(const x of [12.8,15.6,18.4]) prop('counter',x,.5,{size:[2.8,.9,.7],ry:Math.PI,solid:true,fb:0x3b3430});
-  prop('coffee',12,.5,{size:[.3,.36,.3],y:.9,ry:Math.PI,uniform:true,fb:0x16161a});
+  for(const x of [12.8,15.6,18.4]) prop('counter',x,.5,{size:[2.8,.9,.7],ry:0,solid:true,fb:0x3b3430});
+  prop('coffee',12,.5,{size:[.3,.36,.3],y:.9,ry:0,uniform:true,fb:0x16161a});
   prop('table',15.5,3.1,{size:[1.8,.78,1.1],solid:[1.8,1.1],fb:0x5a4636});
   // hall
   prop('plant',19.4,7.25,{size:[.8,1.4,.8],uniform:true,fb:0x2f9e5b});
   // living room
-  prop('sofa',5.5,13.2,{size:[3,.85,1],ry:Math.PI,solid:true,fb:0x3d4a63});
-  prop('tv',5.5,8.8,{size:[2.2,1.1,.14],y:.55,fb:0x0d0f18});
-  prop('speaker',7.7,9,{size:[.6,1.5,.5],solid:.5,fb:0x16161a}); prop('speaker',3.3,9,{size:[.6,1.5,.5],solid:.5,fb:0x16161a});
+  prop('sofa',2.6,13.2,{size:[3,.85,1],ry:Math.PI,solid:true,fb:0x3d4a63});
+  prop('tv',2.6,8.8,{size:[2.2,1.1,.14],y:.55,fb:0x0d0f18});
+  prop('speaker',4.3,9,{size:[.6,1.5,.5],solid:.5,fb:0x16161a}); prop('speaker',.9,9,{size:[.6,1.5,.5],solid:.5,fb:0x16161a});
   prop('armchair',10.8,13.6,{size:[1,.9,1],ry:-Math.PI/2,solid:true,fb:0x4a2f2a});
   prop('lamp',.7,13.3,{size:[.4,1.7,.4],solid:.3,fb:0x35304a});
-  prop('rug',5.5,11.2,{size:[2.4,.03,1.6],flat:true,fb:0x4a3a22});
+  prop('rug',2.6,11.2,{size:[2.4,.03,1.6],flat:true,fb:0x4a3a22});
   // entry
   prop('rug',16,13.2,{size:[1.4,.03,.8],flat:true,fb:0x3a3344}); prop('lamp',19.3,13.3,{size:[.4,1.7,.4],solid:.3,fb:0x35304a});
   // yard
@@ -1492,11 +1507,12 @@ function buildWorld(){
   for(const s of SUBS){
     const g=new THREE.Group(), col=hexN(s.a);
     const m=new THREE.Group(); g.add(m);
-    const inner=prop('door',0,0,{size:[.46,.74,.1],tint:col,ei:.9,fb:col}); scene.remove(inner); inner.position.set(0,-.37,0); m.add(inner);
-    const glow=new THREE.Mesh(new THREE.ShapeGeometry(archShape(.34,.6),12),new THREE.MeshBasicMaterial({color:hexN(s.b),transparent:true,opacity:.55,side:THREE.DoubleSide,depthWrite:false}));
-    glow.position.set(0,-.33,0); m.add(glow);
+    const core=new THREE.Mesh(new THREE.OctahedronGeometry(.2,0),new THREE.MeshStandardMaterial({color:col,emissive:col,emissiveIntensity:1.5,roughness:.25,metalness:.1}));
+    const shell=new THREE.Mesh(new THREE.IcosahedronGeometry(.33,1),new THREE.MeshPhysicalMaterial({color:hexN(s.b),transparent:true,opacity:.3,roughness:.08,metalness:0,transmission:.5,side:THREE.DoubleSide,depthWrite:false}));
+    m.add(core); m.add(shell);
+    const plinth=new THREE.Mesh(new THREE.CylinderGeometry(.26,.32,.1,24),M(0x14121f,{em:col,ei:.3})); plinth.position.y=-1.25; g.add(plinth);
     const halo=new THREE.Mesh(new THREE.RingGeometry(.3,.36,24),new THREE.MeshBasicMaterial({color:hexN(s.b),transparent:true,opacity:.7,side:THREE.DoubleSide,depthWrite:false}));
-    halo.rotation.x=-Math.PI/2; halo.position.y=-1.2; g.add(halo);
+    halo.rotation.x=-Math.PI/2; halo.position.y=-1.19; g.add(halo);
     const pl=new THREE.PointLight(col,.9,3.2,2); pl.position.y=-.1; g.add(pl);
     g.position.set(s.x.pos[0],1.3,s.x.pos[1]); scene.add(g);
     tokens[s.id]={g,m,s};
@@ -1599,11 +1615,12 @@ const tells=()=>load()*(S.shower>0?.5:1);
 const stage=()=>S.worry>=66?2:S.worry>=33?1:0;
 const STAGES=['They do not know','They have noticed','They are worried'];
 function dominant(){ let b=null,bv=0; for(const d of S.doses){ const v=d.load*clamp(1-d.t/d.dur); if(v>bv){ bv=v; b=d; } } return b; }
-function addJoy(v){ S.joy=Math.max(0,S.joy+v); S.dayJoy+=v; if(v>0) popGain(v); }
+function addJoy(v){ S.joy=Math.max(0,S.joy+v); S.dayJoy+=v; if(v>0){ popGain(v); S.idle=0; } }
+function doseJoy(s){ const n=S.today[s.id]||0, tot=S.taken[s.id]||0, dom=dominant(), combo=dom&&dom.s!==s?comboOf(dom.s,s):null; return s.x.joy*Math.pow(.6,n)*Math.pow(.88,tot)*(combo?combo.yield:1)*(S.well<.2?.4:1); }
 function takeDose(s,forced){
   const n=S.today[s.id]||0, tot=S.taken[s.id]||0, dom=dominant();
   const combo=dom&&dom.s!==s?comboOf(dom.s,s):null;
-  const j=s.x.joy*Math.pow(.6,n)*Math.pow(.88,tot)*(combo?combo.yield:1)*(S.well<.2?.4:1);
+  const j=doseJoy(s);
   S.today[s.id]=n+1; S.taken[s.id]=tot+1; S.dayDoses++; S.total++; if(!S.order.includes(s.id)) S.order.push(s.id);
   S.doses.push({s,t:0,dur:s.x.dur,load:s.x.load*(combo?Math.min(1.6,combo.cost):1),motes:Math.round(j*.6),spawn:0});
   addJoy(j*.4);
@@ -1689,7 +1706,7 @@ function updNpc(n,dt){
   else {
     const w=path[n.i%path.length], dx=w[0]-n.x, dz=w[1]-n.z, d=Math.hypot(dx,dz);
     if(d<.12){ n.wait=w[2]; n.i=(n.i+1)%path.length; }
-    else { const sp=1.35; n.x+=dx/d*Math.min(d,sp*dt); n.z+=dz/d*Math.min(d,sp*dt); n.face=Math.atan2(dx,dz); }
+    else { const sp=1.35; n.x+=dx/d*Math.min(d,sp*dt); n.z+=dz/d*Math.min(d,sp*dt); n.face=Math.atan2(dx,dz); n.moving=true; }
   }
   const d=dist(n,P); n.sees=d<6.5&&los(n.x,n.z,P.x,P.z);
   if(n.sees&&(n.wait>0||stage()>0)) n.face=Math.atan2(P.x-n.x,P.z-n.z);
@@ -1701,7 +1718,8 @@ function updNpc(n,dt){
     else if(n.cool<=0&&d<3.2) say(n,stage()===2?pick(SAY.worried):pick(SAY.calm[n.d.id]),3);
   }
   if(n.sayT>0){ n.sayT-=dt; if(n.sayT<=0) n.el.classList.remove('on'); }
-  n.f.g.position.set(n.x,Math.abs(Math.sin(G*6+n.x))*(n.wait>0?0:.04),n.z); n.f.g.rotation.y=n.face;
+  n.f.g.position.set(n.x,0,n.z); n.f.g.rotation.y=n.face;
+  if(n.f.mixer){ n.f.act.timeScale+=((n.moving?1.1:.12)-n.f.act.timeScale)*Math.min(1,dt*6); n.f.mixer.update(dt); } n.moving=false;
   n.f.mark.visible=stage()===2; n.f.mark.rotation.y=G*2;
   if(n.el.classList.contains('on')) place(n.el,n.x,2.3,n.z);
 }
@@ -1748,8 +1766,8 @@ function findNear(){
   return best;
 }
 function promptFor(st){
-  if(st.type==='sub') return {text:st.s.name,time:.7};
-  if(st.type==='task'){ const k=taskMult(st.t); return {text:st.t.name,time:1.8*k.slow}; }
+  if(st.type==='sub') return {text:st.s.name+' · +'+Math.round(doseJoy(st.s))+' joy',time:.7};
+  if(st.type==='task'){ const k=taskMult(st.t); return {text:st.t.name+' · +'+Math.round(st.t.joy*k.m)+' joy',time:1.8*k.slow}; }
   if(st.type==='bed') return {text:'Sleep, and end '+DAYS[S.day],time:1.4};
   return {text:'Tell her the truth',time:2};
 }
@@ -1774,6 +1792,7 @@ function target(){
 
 /* ---------- a day ---------- */
 function startDay(d){
+  S.idle=0; S.idleSaid=false; S.itchSaid=false;
   Object.assign(S,{day:d,clock:0,doses:[],today:{},done:{},dayJoy:0,dayDoses:0,lostToday:0,talked:false,shower:0,chain:0,cool:0,warned:false,goalSaid:false});
   const bo=S.blackout; S.blackout=false;
   P.x=bo?(d>=1?9:9):2.4; P.z=bo?(d>=1?4.2:7.2):1.6; P.vx=P.vz=0; C=null; fade=1; fadeTo=null; inputQ.length=0; yaw=bo?R(TAU):3.68; pitch=-.05;
@@ -1868,6 +1887,9 @@ function updPlay(dt){
   S.doses=S.doses.filter(d=>d.t<d.dur);
   if(!S.doses.length) S.chain=0;
   musicFor();
+  // standing still is not free: the well drains, faster the longer it goes and the deeper the habit
+  S.idle=(S.idle||0)+dt;
+  if(S.idle>18&&!C){ const k=1+(S.idle-18)/30; S.well=clamp(S.well-dt*.006*k*(1+S.habit*2)); if(!S.idleSaid){ S.idleSaid=true; caption(STORY.idle,4); } if(S.idle>45&&!S.itchSaid){ S.itchSaid=true; caption(STORY.itch,4); sndFx('heart',.6); } }
   // what the body will do
   let spd=1, acc=12, sway=0, lag=0;
   for(const d of S.doses){ const k=doseK(d), x=d.s.x; spd*=lerp(1,x.spd,k); acc=Math.min(acc,lerp(12,x.acc||12,k)); if(x.acc>12) acc=lerp(acc,x.acc,k); sway=Math.max(sway,(x.sway||0)*k); lag=Math.max(lag,(x.lag||0)*k); }

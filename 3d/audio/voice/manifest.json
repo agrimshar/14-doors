@@ -109,6 +109,8 @@
   "endClear": "me_endClear.mp3",
   "endGrey": "me_endGrey.mp3",
   "endKnown": "me_endKnown.mp3",
-  "endHooked": "me_endHooked.mp3"
+  "endHooked": "me_endHooked.mp3",
+  "idle": "me_idle.mp3",
+  "itch": "me_itch.mp3"
  }
 }
