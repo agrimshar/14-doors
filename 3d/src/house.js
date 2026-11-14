@@ -19,7 +19,7 @@ SUBS.forEach(s=>{ s.x=X3[s.id]; });
 
 const DAYS = ['Thursday','Friday','Saturday','Sunday'];
 const DAYLEN = 130;          // seconds of play from 08:00 to midnight
-const GOALS = [16,24,32,38];   // joy needed each day to keep it
+const GOALS = [12,17,21,24];   // joy needed each day to keep it: exactly what the ordinary tasks (and the truth) can give, so staying clean means doing all of it
 
 const TASKS = [
   {id:'work',name:'Do the coursework',x:5.8,z:1.7,day:0,joy:3,kind:'focus',room:'bed',line:'Two pages. They were good pages.'},

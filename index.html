@@ -835,7 +835,7 @@ SUBS.forEach(s=>{ s.x=X3[s.id]; });
 
 const DAYS = ['Thursday','Friday','Saturday','Sunday'];
 const DAYLEN = 130;          // seconds of play from 08:00 to midnight
-const GOALS = [16,24,32,38];   // joy needed each day to keep it
+const GOALS = [12,17,21,24];   // joy needed each day to keep it: exactly what the ordinary tasks (and the truth) can give, so staying clean means doing all of it
 
 const TASKS = [
   {id:'work',name:'Do the coursework',x:5.8,z:1.7,day:0,joy:3,kind:'focus',room:'bed',line:'Two pages. They were good pages.'},
@@ -1428,11 +1428,17 @@ function doorway(x,z,day){
     gates.push({day,mesh:g,box:[x-.8,z-.2,x+.8,z+.2],x,z});
   }
 }
+function figurePose(f,want){
+  if(f.state===want) return; const to=f[want], from=f[f.state]; f.state=want;
+  to.reset().setEffectiveWeight(1).play(); to.crossFadeFrom(from,.3,false);
+}
 function figure(col){
   const g=new THREE.Group(), c=hexN(col), f={g,head:new THREE.Group(),mixer:null,act:null};
   f.body=prop('person_walk',0,0,{size:[null,1.72,null],uniform:true,tint:c,ei:.12,fb:c,ready:(m,clips)=>{
     if(!clips||!clips.length) return;
-    f.mixer=new THREE.AnimationMixer(m); f.act=f.mixer.clipAction(clips[0]); f.act.play(); f.act.timeScale=.12;
+    // one walk clip from the rig; a single frame of it, held, is the standing pose we crossfade to when the walk stops
+    f.mixer=new THREE.AnimationMixer(m); f.walk=f.mixer.clipAction(clips[0]); f.walk.timeScale=1.05;
+    f.idle=f.mixer.clipAction(THREE.AnimationUtils.subclip(clips[0],'idle',0,1,30)); f.idle.setLoop(THREE.LoopRepeat); f.idle.play(); f.state='idle';
   }});
   scene.remove(f.body); g.add(f.body); g.add(f.head);
   f.mark=new THREE.Mesh(new THREE.OctahedronGeometry(.13),new THREE.MeshBasicMaterial({color:0xff6b5d})); f.mark.position.y=2.05; f.mark.visible=false; g.add(f.mark);
@@ -1719,7 +1725,7 @@ function updNpc(n,dt){
   }
   if(n.sayT>0){ n.sayT-=dt; if(n.sayT<=0) n.el.classList.remove('on'); }
   n.f.g.position.set(n.x,0,n.z); n.f.g.rotation.y=n.face;
-  if(n.f.mixer){ n.f.act.timeScale+=((n.moving?1.1:.12)-n.f.act.timeScale)*Math.min(1,dt*6); n.f.mixer.update(dt); } n.moving=false;
+  if(n.f.mixer){ figurePose(n.f,n.moving?'walk':'idle'); n.f.mixer.update(dt); } n.moving=false;
   n.f.mark.visible=stage()===2; n.f.mark.rotation.y=G*2;
   if(n.el.classList.contains('on')) place(n.el,n.x,2.3,n.z);
 }
