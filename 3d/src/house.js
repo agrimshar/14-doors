@@ -18,8 +18,8 @@ const X3 = {
 SUBS.forEach(s=>{ s.x=X3[s.id]; });
 
 const DAYS = ['Thursday','Friday','Saturday','Sunday'];
-const DAYLEN = 130;          // seconds of play from 08:00 to midnight
-const GOALS = [12,17,21,24];   // joy needed each day to keep it: exactly what the ordinary tasks (and the truth) can give, so staying clean means doing all of it
+const DAYLEN = 105;          // seconds of play from 08:00 to midnight
+const GOALS = [16,24,30,32];   // joy needed each day: more than the tasks pay at x1, so a sober day is only kept by doing them well and in a row (or by a door)
 
 const TASKS = [
   {id:'work',name:'Do the coursework',x:5.8,z:1.7,day:0,joy:3,kind:'focus',room:'bed',line:'Two pages. They were good pages.'},
@@ -58,6 +58,8 @@ const STORY = {
   days:['','Friday. The rest of the house opened up, and so did the cabinets.','Saturday. Jay texted. Come outside.','Sunday. Whatever I was building, this was the day it showed.'],
   locked:['','Not today. Friday.','Not yet. Saturday.'],
   goal:'That was enough for one day. Bed, or a little more.',
+  flow:'Everything was landing. I did not want to stop.',
+  snap:'And just like that, the thread snapped.',
   again:'It was never the first time twice.',
   flat:'Sober felt flat now. That was new.',
   limit:'I could feel the edge of it coming.',

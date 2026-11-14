@@ -261,7 +261,7 @@ function takeDose(s,forced){
   else if(combo) caption(combo.name+'. '+combo.line,6);
   else caption(n?STORY.again:(tot?s.lines[1]:s.lines[0]),5);
   const seer=visibleNpc(7);
-  if(seer&&s.x.load>=.3){ S.worry+=18; say(seer,pick(SAY.caught),3.5); }
+  if(seer&&s.x.load>=.3){ S.worry+=18; say(seer,pick(SAY.caught),3.5); breakFlow(); }
   if(combo&&combo.black) startLoss('blackout');
 }
 let musId='';
@@ -273,7 +273,7 @@ function musicFor(){
 /* ---------- losing control ---------- */
 function startLoss(type,target){
   if(C&&C.type==='blackout') return;
-  C={type,target,t:0,hit:false}; S.lostToday++; S.lost++; hold=0;
+  C={type,target,t:0,hit:false}; S.lostToday++; S.lost++; hold=0; cancelCheck(); breakFlow();
   $('#lost').classList.add('on'); sBlack();
   if(type==='blackout'){ caption(S.well<=0?STORY.dry:STORY.blackout,6); fadeTo=()=>endDay(true); }
   else caption(STORY[type],5);
@@ -341,10 +341,10 @@ function updNpc(n,dt){
   }
   const d=dist(n,P); n.sees=d<6.5&&los(n.x,n.z,P.x,P.z);
   if(n.sees&&(n.wait>0||stage()>0)) n.face=Math.atan2(P.x-n.x,P.z-n.z);
-  n.cool-=dt;
+  n.cool-=dt; if(n.quiz>0) n.quiz-=dt;
   if(n.sees&&S.phase==='play'&&!C){
     const tl=tells();
-    if(tl>.2){ S.worry+=tl*7*dt; if(n.cool<=0) say(n,pick(SAY.seen),3); }
+    if(tl>.2){ S.worry+=tl*2.5*dt; if(n.cool<=0&&!K.on&&d<5.5&&(n.quiz||0)<=0) actNormal(n,tl); }
     else if(S.well<.2){ S.worry+=1.5*dt; if(n.cool<=0) say(n,'You look awful. Are you eating?',3); }
     else if(n.cool<=0&&d<3.2) say(n,stage()===2?pick(SAY.worried):pick(SAY.calm[n.d.id]),3);
   }
@@ -353,6 +353,14 @@ function updNpc(n,dt){
   if(n.f.mixer){ figurePose(n.f,n.moving?'walk':'idle'); n.f.mixer.update(dt); } n.moving=false;
   n.f.mark.visible=stage()===2; n.f.mark.rotation.y=G*2;
   if(n.el.classList.contains('on')) place(n.el,n.x,2.3,n.z);
+}
+function actNormal(n,tl){
+  // they stop you with a question; the more in your blood, the faster and narrower the answer has to be
+  say(n,pick(SAY.seen),4); n.quiz=26; n.wait=Math.max(n.wait,7); n.face=Math.atan2(P.x-n.x,P.z-n.z);
+  startCheck({kind:'act',label:'Act normal · '+n.d.name,hint:'Press E in the light, twice',speed:.9+tl*1.4,width:.2*(1-tl*.55),need:2,onEnd:avg=>{
+    if(avg>=.5){ S.worry=Math.max(0,S.worry-9); say(n,pick(SAY.calm[n.d.id]),3); caption(avg>=.99?'Steady. They bought it.':'I held it together. Just.',3.5); }
+    else { S.worry+=15+tl*22; say(n,pick(SAY.caught),3.5); caption('My face gave it away.',3.5); breakFlow(); V.red=.5; }
+  }});
 }
 function place(el,x,y,z){
   vTmp.set(x,y,z).project(camera);
@@ -375,14 +383,24 @@ function taskMult(t){
   if(S.well<.2) m*=.5;
   return {m,slow};
 }
-function doTask(t){
-  const {m}=taskMult(t); S.done[t.id]=true; addJoy(t.joy*m);
+const flowMult=()=>1+2*(S.flow||0);
+function breakFlow(){ if((S.flow||0)>.3) caption(STORY.snap,3.5); S.flow=0; S.flowT=0; }
+function bloom(room,v){ const l=lamps[room]; if(l) l.userData.bloom=Math.max(l.userData.bloom||0,v); }
+function bloomAll(v){ for(const k in lamps) bloom(k,v); }
+function startTask(t){
+  const sp={focus:.9,play:1.15,bond:.8,care:.7}[t.kind]||1;
+  startCheck({label:t.name,speed:sp*(t.id==='hoops'?1.3:1),width:.2,need:3,onEnd:avg=>doTask(t,avg)});
+}
+function doTask(t,avg=.6){
+  const {m}=taskMult(t), skill=.5+1.5*avg, fm=flowMult(); S.done[t.id]=true; addJoy(t.joy*m*skill*fm);
+  if(avg>=.5){ const was=S.flow||0; S.flow=clamp(was+.34); S.flowT=22; if(was<.6&&S.flow>=.6) setTimeout(()=>caption(STORY.flow,4),2800); } else S.flowT=Math.min(S.flowT||0,5);
+  bloom(t.room,.5+avg*1.2); V.flash=.08+.3*avg;
   if(t.well) S.well=clamp(S.well+t.well);
   if(t.id==='shower') S.shower=30;
   if(t.kind==='bond'){ if(tells()>.35){ S.worry+=10; caption('They looked at me a second too long.',4); } else { if(load()<.1) S.worry=Math.max(0,S.worry-8); caption(t.line,4.5); } }
-  else caption(t.line,4.5);
+  else caption((avg>=.99?'Perfect. ':avg<.34?'Sloppy. ':'')+t.line,4.5);
   t.ring.material.opacity=.15; if(lamps[t.room]) lamps[t.room].userData.lit=true;
-  sShard(); sndFx('task',.8); V.flash=.12; hudTasks();
+  sShard(); sndFx(avg>=.99?'shard':'task',.8); hudTasks();
 }
 function talk(){ S.talked=true; S.worry=Math.max(0,S.worry-30); S.habit=clamp(S.habit-.08); addJoy(5); caption(STORY.talk,6); sShard(); const m=npcs[0]; say(m,'Thank you for telling me.',4); }
 function findNear(){
@@ -398,13 +416,13 @@ function findNear(){
 }
 function promptFor(st){
   if(st.type==='sub') return {text:st.s.name+' · +'+Math.round(doseJoy(st.s))+' joy',time:.7};
-  if(st.type==='task'){ const k=taskMult(st.t); return {text:st.t.name+' · +'+Math.round(st.t.joy*k.m)+' joy',time:1.8*k.slow}; }
+  if(st.type==='task'){ const k=taskMult(st.t), fm=flowMult(); return {text:st.t.name+' · +'+Math.round(st.t.joy*k.m*.5*fm)+'–'+Math.round(st.t.joy*k.m*2*fm)+' joy',time:.6}; }
   if(st.type==='bed') return {text:'Sleep, and end '+DAYS[S.day],time:1.4};
   return {text:'Tell her the truth',time:2};
 }
 function act(st){
   if(st.type==='sub') takeDose(st.s);
-  else if(st.type==='task') doTask(st.t);
+  else if(st.type==='task') startTask(st.t);
   else if(st.type==='bed') endDay(false);
   else talk();
 }
@@ -423,7 +441,7 @@ function target(){
 
 /* ---------- a day ---------- */
 function startDay(d){
-  S.idle=0; S.idleSaid=false; S.itchSaid=false;
+  S.idle=0; S.idleSaid=false; S.itchSaid=false; S.flow=0; S.flowT=0; cancelCheck();
   Object.assign(S,{day:d,clock:0,doses:[],today:{},done:{},dayJoy:0,dayDoses:0,lostToday:0,talked:false,shower:0,chain:0,cool:0,warned:false,goalSaid:false});
   const bo=S.blackout; S.blackout=false;
   P.x=bo?(d>=1?9:9):2.4; P.z=bo?(d>=1?4.2:7.2):1.6; P.vx=P.vz=0; C=null; fade=1; fadeTo=null; inputQ.length=0; yaw=bo?R(TAU):3.68; pitch=-.05;
@@ -440,6 +458,7 @@ function startDay(d){
   setTimeout(()=>caption(d===0?STORY.open:STORY.days[d],6),900);
 }
 function endDay(blackout){
+  cancelCheck();
   if(S.phase!=='play') return;
   const avail=TASKS.filter(t=>S.day>=t.day), done=avail.filter(t=>S.done[t.id]).length;
   const met=S.dayJoy>=goalNow(); S.kept[S.day]=met;
@@ -493,7 +512,7 @@ function hud(){
   const g=goalNow(), met=S.dayJoy>=g;
   $('#hJoy').textContent=Math.round(S.dayJoy); $('#hGoal').textContent='/ '+g;
   $('#oBar').style.transform=`scaleX(${clamp(S.dayJoy/g)})`; $('#obj').classList.toggle('met',met);
-  if(met&&!S.goalSaid){ S.goalSaid=true; caption(STORY.goal,5); sShard(); S.bed.ring.material.color.setHex(0xffb46a); }
+  if(met&&!S.goalSaid){ S.goalSaid=true; caption(STORY.goal,5); sShard(); sndFx('shard',.9); bloomAll(1.6); V.flash=.4; S.bed.ring.material.color.setHex(0xffb46a); }
   $('#oText').textContent=met?'Goal kept. Get to bed before midnight, or stay up for more.':`Reach ${g} joy, then sleep before midnight.`;
   const tg=target(), dx=tg.x-P.x, dz=tg.z-P.z, dd=Math.hypot(dx,dz);
   let a=Math.atan2(-dx,-dz)-yaw; a=Math.atan2(Math.sin(a),Math.cos(a));
@@ -506,6 +525,7 @@ function hud(){
   $('#mLim').style.left=(lim/1.4*100)+'%';
   $('#mHab').style.transform=`scaleX(${clamp(S.habit)})`; $('#mHab').classList.toggle('hot',S.habit>.5);
   $('#mHome').style.transform=`scaleX(${clamp(S.worry/100)})`; $('#mHome').classList.toggle('hot',S.worry>=66);
+  const fm=flowMult(), fe=$('#hFlow'); fe.textContent='×'+fm.toFixed(1)+' flow'; fe.classList.toggle('on',(S.flow||0)>.03); fe.classList.toggle('hot',fm>=2.3);
   const pr=$('#prompt');
   if(near&&!C){ const p=promptFor(near); pr.classList.add('on'); $('#pText').textContent='Hold E · '+p.text; $('#pFill').style.transform=`scaleX(${clamp(hold)})`; }
   else pr.classList.remove('on');
@@ -529,8 +549,10 @@ function updPlay(dt){
   if(over) sway=Math.max(sway,.6);
   if(C){ autopilot(dt); if(C&&C.type!=='blackout'&&C.type!=='scramble'&&Math.hypot(P.vx,P.vz)>.5){ let a=Math.atan2(-P.vx,-P.vz)-yaw; a=Math.atan2(Math.sin(a),Math.cos(a)); yaw+=a*Math.min(1,6*dt); } }
   else { yaw+=((keys.ArrowLeft?1:0)-(keys.ArrowRight?1:0))*2.3*dt; if(sway>0) yaw+=Math.sin(G*1.1)*.35*sway*dt; }
+  if(S.flowT>0) S.flowT-=dt; else if(S.flow>0) S.flow=clamp(S.flow-dt/14);
+  updCheck(dt); if(S.phase!=='play') return;
   if(!C&&S.phase==='play'){
-    let i=inputDir();
+    let i=K.on?{x:0,z:0}:inputDir();
     if(lag>.05){ inputQ.push({t:G,x:i.x,z:i.z}); while(inputQ.length>1&&inputQ[1].t<G-lag) inputQ.shift(); i=inputQ[0]; } else inputQ.length=0;
     let tx=i.x, tz=i.z;
     if(sway>0){ const m=Math.hypot(tx,tz); tx+=Math.sin(G*1.7)*.7*sway*(m>0?1:.25); tz+=Math.cos(G*1.3)*.5*sway*(m>0?1:.25); }
@@ -544,7 +566,7 @@ function updPlay(dt){
   // interaction
   for(const t of TASKS) if(S.done[t.id]) t.beam.visible=false;
   S.bed.beam.visible=S.dayJoy>=goalNow();
-  near=C?null:findNear();
+  near=C||K.on?null:findNear();
   if(near&&(keys.KeyE||keys.Space)){ hold+=dt/promptFor(near).time; if(hold>=1){ hold=0; keys.KeyE=keys.Space=false; act(near); } } else hold=Math.max(0,hold-dt*2);
   if(S.phase!=='play') return;
   // lights that only show when something is in your blood
@@ -598,7 +620,9 @@ function updScene(dt){
   sun.intensity=lerp(1.1,.4,night); sun.color.setRGB(lerp(1,.5,night),lerp(lerp(.93,.8,morn),.6,night),lerp(lerp(.85,.6,morn),1,night));
   sun.position.set(10+Math.cos(t*Math.PI)*14,16,11-8+Math.sin(t*Math.PI)*4);
   hemi.intensity=lerp(.5,.34,night);
-  for(const k in lamps){ const l=lamps[k]; const target=(l.userData.lit?1.7:.95)+night*.5; l.intensity+=(target-l.intensity)*Math.min(1,dt*2); }
+  const flow=S.phase==='play'?(S.flow||0):0, warm=S.kept.filter(Boolean).length*.22;
+  for(const k in lamps){ const l=lamps[k], b=l.userData.bloom||0; const target=(l.userData.lit?1.7:.95)+night*.5+flow*.9+warm*.5+b*2.6; l.intensity+=(target-l.intensity)*Math.min(1,dt*(b>.1?8:2)); l.userData.bloom=b*Math.exp(-dt*2.2); }
+  hemi.intensity+=flow*.12+warm*.08*morn; sun.color.r=Math.min(1,sun.color.r+warm*.1*morn); sun.color.b=Math.max(0,sun.color.b-warm*.12*morn);
   // sky
   const K=[[0x3b2fa0,0xff7ab8,0xffd08a],[0x1a1250,0xc0308f,0xff6a3a],[0x05041a,0x2a1260,0x7a2f8f]];
   const seg=t<.6?0:1, f2=seg?clamp((t-.6)/.3):t/.6, U=sky.material.uniforms, names=['top','mid','bot'];
