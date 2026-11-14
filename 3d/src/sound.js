@@ -1,10 +1,11 @@
 /* ---------- generated audio: music beds, ambience, voice (ElevenLabs) layered over the procedural sfx ---------- */
 const AUD='3d/audio/';
 const SND={bed:null,beds:{},amb:{},fx:{},voice:null,duck:1,on:false,me:{}};
-function setMusic(cfg){ AU.cfg=null; } // the generated beds replace the procedural sequencer; keep its sfx
+function setMusic(cfg){ AU.cfg=null; sndOpenSfx(); } // the generated beds replace the procedural sequencer; keep its sfx
+function sndOpenSfx(){ if(AU.ctx) aMus.gain.setTargetAtTime(1,AU.ctx.currentTime,.1); } // the sfx share the sequencer's bus, which auStart leaves at 0
 function sndEl(path,loop,vol){ const a=new Audio(AUD+path); a.loop=loop; a.volume=vol; a.preload='auto'; a.tgt=vol; return a; }
 function sndLayer(map,id,path,target){ let a=map[id]; if(!a){ a=map[id]=sndEl(path,true,0); a.tgt=0; } a.tgt=target; return a; }
-function sndStart(){ if(SND.on) return; SND.on=true; for(const k of ['door','task','shard','sleep','caught','heart','step']) SND.fx[k]=sndEl('sfx/'+k+'.mp3',false,1); }
+function sndStart(){ if(SND.on) return; SND.on=true; sndOpenSfx(); for(const k of ['door','task','shard','sleep','caught','heart','step']) SND.fx[k]=sndEl('sfx/'+k+'.mp3',false,1); }
 function sndFx(k,vol=1){ if(!SND.on||AU.muted) return; const s=SND.fx[k]; if(!s) return; const c=s.cloneNode(); c.volume=vol; c.play().catch(()=>{}); }
 function sndVoice(path,vol=1){
   if(!SND.on||AU.muted||!path) return;
