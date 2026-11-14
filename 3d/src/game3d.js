@@ -72,7 +72,7 @@ function lamp(id,x,z,col){
   const l=new THREE.PointLight(col,1,13,2); l.position.set(x,2.2,z); scene.add(l); lamps[id]=l;
 }
 function buildWorld(){
-  scene=new THREE.Scene(); scene.background=new THREE.Color(0x06050c); scene.fog=new THREE.Fog(0x2a1840,16,70);
+  scene=new THREE.Scene(); scene.background=new THREE.Color(0x06050c); scene.fog=new THREE.Fog(0x2a1840,18,95); mkTextures();
   camera=new THREE.PerspectiveCamera(72,1,.05,260);
   hemi=new THREE.HemisphereLight(0xaab4ff,0x4a3626,.5); scene.add(hemi);
   scene.environment=mkEnv();
@@ -82,8 +82,8 @@ function buildWorld(){
   scene.add(sun); scene.add(sun.target);
   // ground and floors
   box(90,.1,90,10,-.12,11,0x08070f,{flat:true});
-  const floors=[[0,0,7,6,0x302852],[7,0,11,6,0x1e4450],[11,0,20,6,0x47352a],[0,6,20,8.5,0x272238],[0,8.5,12,14,0x3a3222],[12,8.5,20,14,0x2b2734],[0,14,20,22,0x16361f]];
-  for(const [x1,z1,x2,z2,c] of floors) box(x2-x1,.1,z2-z1,(x1+x2)/2,-.05,(z1+z2)/2,c,{flat:true,rough:.95});
+  const floors=[[0,0,7,6,0x5a4e8a,'wood'],[7,0,11,6,0x3a6a78,'tile'],[11,0,20,6,0x7a6050,'tile'],[0,6,20,8.5,0x4a4260,'concrete'],[0,8.5,12,14,0x6a5a3c,'wood'],[12,8.5,20,14,0x4e485c,'concrete'],[0,14,20,22,0x8aa884,'grass']];
+  for(const [x1,z1,x2,z2,c,k] of floors) box(x2-x1,.1,z2-z1,(x1+x2)/2,-.05,(z1+z2)/2,c,{flat:true,rough:.95,map:texFit(k,x2-x1,z2-z1),bs:k==='grass'?.03:.015});
   // walls
   wall(0,0,20,0); wall(0,0,0,14); wall(20,0,20,14); wall(0,14,15.2,14); wall(16.8,14,20,14);
   wall(0,6,4.2,6); wall(5.8,6,8.2,6); wall(9.8,6,14.2,6); wall(15.8,6,20,6);
@@ -148,14 +148,15 @@ function buildWorld(){
   sky=new THREE.Mesh(new THREE.SphereGeometry(110,24,16),new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,fog:false,
     uniforms:{top:{value:new THREE.Color(0x0b0830)},mid:{value:new THREE.Color(0x7a2f8f)},bot:{value:new THREE.Color(0xff8a6a)}},
     vertexShader:'varying vec3 vP; void main(){ vP=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }',
-    fragmentShader:'uniform vec3 top; uniform vec3 mid; uniform vec3 bot; varying vec3 vP; void main(){ float h=normalize(vP).y; vec3 c=mix(bot,mid,smoothstep(-.02,.22,h)); c=mix(c,top,smoothstep(.15,.75,h)); gl_FragColor=vec4(c,1.); }'}));
+    fragmentShader:'uniform vec3 top; uniform vec3 mid; uniform vec3 bot; varying vec3 vP; float hs(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); } void main(){ vec3 n=normalize(vP); float h=n.y; vec3 c=mix(bot,mid,smoothstep(-.02,.22,h)); c=mix(c,top,smoothstep(.15,.75,h)); c+=bot*.55*exp(-abs(h-.01)*22.); float a=atan(n.z,n.x); vec2 g=vec2(a*22.,h*60.); float cl=hs(floor(g*.5)); c+=mid*.18*smoothstep(.55,1.,cl)*smoothstep(.05,.3,h)*(1.-smoothstep(.3,.7,h)); gl_FragColor=vec4(c,1.); }'}));
   sky.position.set(10,0,11); scene.add(sky);
+  addSkyline(); addGrass(); addDecor();
   const sp=new Float32Array(900); for(let i=0;i<300;i++){ const a=R(TAU), e=R(.12,1.5), r=100; sp[i*3]=10+Math.cos(a)*Math.cos(e)*r; sp[i*3+1]=Math.sin(e)*r; sp[i*3+2]=11+Math.sin(a)*Math.cos(e)*r; }
   const sg=new THREE.BufferGeometry(); sg.setAttribute('position',new THREE.BufferAttribute(sp,3));
   stars=new THREE.Points(sg,new THREE.PointsMaterial({color:0xffffff,size:2,sizeAttenuation:false,transparent:true,opacity:.8,fog:false,depthWrite:false})); scene.add(stars);
   // people
   for(const d of NPCS){
-    const f=figure(d.col), el=document.createElement('div'); el.className='bubble'; $('#bubbles').appendChild(el);
+    const f=figure(d.col,d.id+'_walk'), el=document.createElement('div'); el.className='bubble'; $('#bubbles').appendChild(el);
     npcs.push({d,f,el,x:d.path[0][0],z:d.path[0][1],i:0,wait:1,face:0,sayT:0,cool:R(2,6),knock:null,sees:false});
   }
   player=figure('#f7f0e3');
@@ -343,7 +344,7 @@ function updNpc(n,dt){
   }
   if(n.sayT>0){ n.sayT-=dt; if(n.sayT<=0) n.el.classList.remove('on'); }
   n.f.g.position.set(n.x,0,n.z); n.f.g.rotation.y=n.face;
-  if(n.f.mixer){ n.f.act.timeScale+=((n.moving?1.1:.12)-n.f.act.timeScale)*Math.min(1,dt*6); n.f.mixer.update(dt); } n.moving=false;
+  if(n.f.mixer){ figurePose(n.f,n.moving?'walk':'idle'); n.f.mixer.update(dt); } n.moving=false;
   n.f.mark.visible=stage()===2; n.f.mark.rotation.y=G*2;
   if(n.el.classList.contains('on')) place(n.el,n.x,2.3,n.z);
 }
@@ -596,7 +597,7 @@ function updScene(dt){
   const K=[[0x3b2fa0,0xff7ab8,0xffd08a],[0x1a1250,0xc0308f,0xff6a3a],[0x05041a,0x2a1260,0x7a2f8f]];
   const seg=t<.6?0:1, f2=seg?clamp((t-.6)/.3):t/.6, U=sky.material.uniforms, names=['top','mid','bot'];
   for(let i=0;i<3;i++){ const c0=K[seg][i], c1=K[seg+1][i]; U[names[i]].value.setRGB(lerp((c0>>16&255),(c1>>16&255),f2)/255,lerp((c0>>8&255),(c1>>8&255),f2)/255,lerp((c0&255),(c1&255),f2)/255); }
-  scene.fog.color.copy(U.mid.value).multiplyScalar(.45); stars.material.opacity=night*.9;
+  scene.fog.color.copy(U.mid.value).multiplyScalar(.45); stars.material.opacity=night*.9; tickTex(G,night);
   // the player's body
   const d=dominant(), hi=d?doseK(d):0, fp=S.phase==='play'||S.phase==='card';
   player.g.position.set(P.x,0,P.z); player.body.visible=player.head.visible=false;
