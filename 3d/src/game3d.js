@@ -11,7 +11,8 @@ const REDUCE=matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ---------- state ---------- */
 const S={phase:'title',day:0,clock:0,well:1,habit:0,worry:0,joy:0,dayJoy:0,doses:[],dayDoses:0,total:0,taken:{},today:{},done:{},
-  lostToday:0,lost:0,shower:0,talked:false,cool:0,chain:0,stage:0,warned:false,flatSaid:false,blackout:false,order:[],kept:[],goalSaid:false};
+  lostToday:0,lost:0,shower:0,talked:false,cool:0,chain:0,stage:0,warned:false,flatSaid:false,blackout:false,order:[],kept:[],goalSaid:false,
+  perf:0,flowMax:1,worry0:0,streak:0,score:0,ledger:[]};
 const P={x:3.5,z:3,vx:0,vz:0,face:0,r:.35,walk:0};
 const keys={}; const inputQ=[];
 let C=null, G=0, hold=0, near=null, endKind=null, fade=0, fadeTo=null, yaw=3.68, pitch=-.05, locked=false, sky=null, stars=null, bob=0;
@@ -389,11 +390,11 @@ function bloom(room,v){ const l=lamps[room]; if(l) l.userData.bloom=Math.max(l.u
 function bloomAll(v){ for(const k in lamps) bloom(k,v); }
 function startTask(t){
   const sp={focus:.9,play:1.15,bond:.8,care:.7}[t.kind]||1;
-  startCheck({label:t.name,speed:sp*(t.id==='hoops'?1.3:1),width:.2,need:3,onEnd:avg=>doTask(t,avg)});
+  startCheck({label:t.name,speed:sp*(t.id==='hoops'?1.3:1),width:.2,need:3,onEnd:(avg,h)=>doTask(t,avg,h)});
 }
-function doTask(t,avg=.6){
-  const {m}=taskMult(t), skill=.5+1.5*avg, fm=flowMult(); S.done[t.id]=true; addJoy(t.joy*m*skill*fm);
-  if(avg>=.5){ const was=S.flow||0; S.flow=clamp(was+.34); S.flowT=22; if(was<.6&&S.flow>=.6) setTimeout(()=>caption(STORY.flow,4),2800); } else S.flowT=Math.min(S.flowT||0,5);
+function doTask(t,avg=.6,hits=[]){
+  const {m}=taskMult(t), skill=.5+1.5*avg, fm=flowMult(); S.done[t.id]=true; addJoy(t.joy*m*skill*fm); S.perf+=hits.filter(h=>h>=1).length;
+  if(avg>=.5){ const was=S.flow||0; S.flow=clamp(was+.34); S.flowT=22; S.flowMax=Math.max(S.flowMax,flowMult()); if(was<.6&&S.flow>=.6) setTimeout(()=>caption(STORY.flow,4),2800); } else S.flowT=Math.min(S.flowT||0,5);
   bloom(t.room,.5+avg*1.2); V.flash=.08+.3*avg;
   if(t.well) S.well=clamp(S.well+t.well);
   if(t.id==='shower') S.shower=30;
@@ -441,7 +442,7 @@ function target(){
 
 /* ---------- a day ---------- */
 function startDay(d){
-  S.idle=0; S.idleSaid=false; S.itchSaid=false; S.flow=0; S.flowT=0; cancelCheck();
+  S.idle=0; S.idleSaid=false; S.itchSaid=false; S.flow=0; S.flowT=0; S.perf=0; S.flowMax=1; S.worry0=S.worry; cancelCheck();
   Object.assign(S,{day:d,clock:0,doses:[],today:{},done:{},dayJoy:0,dayDoses:0,lostToday:0,talked:false,shower:0,chain:0,cool:0,warned:false,goalSaid:false});
   const bo=S.blackout; S.blackout=false;
   P.x=bo?(d>=1?9:9):2.4; P.z=bo?(d>=1?4.2:7.2):1.6; P.vx=P.vz=0; C=null; fade=1; fadeTo=null; inputQ.length=0; yaw=bo?R(TAU):3.68; pitch=-.05;
@@ -475,20 +476,63 @@ function endDay(blackout){
   else { v='Grey.'; line=STORY.dayGrey; }
   $('#cEyebrow').textContent=DAYS[S.day]+' night';
   $('#cBig').textContent=v; $('#cLine').textContent=line; sndFx('sleep',.8); setTimeout(()=>sndStory(line),900);
-  const dh=Math.round((S.habit-hab0)*100);
-  $('#cStats').innerHTML=`<dt>Today's goal</dt><dd>${met?'Kept':'Missed'} · ${Math.round(S.dayJoy)} of ${goalNow()} joy${bonus?` · in-control bonus +${bonus}`:''}</dd><dt>Day to day</dt><dd>${done} of ${avail.length} done</dd><dt>Doors opened</dt><dd>${S.dayDoses}</dd><dt>The habit</dt><dd>${Math.round(S.habit*100)}%${dh<0?' · easing':''}</dd><dt>At home</dt><dd>${STAGES[stage()]}</dd>`;
+  const L=dayLedger(met,bonus); S.ledger[S.day]=L; S.score+=L.score;
+  $('#cLedger').innerHTML=ledgerHTML(L.rows,'Day score',L.score);
+  $('#cTrack').innerHTML=DAYS.map((d,i)=>`<span class="${i===S.day?(met?'kept':'miss'):i<S.day?(S.kept[i]?'kept':'miss'):''}"><i></i>${d.slice(0,3)}</span>`).join('');
+  $('#cNext').innerHTML=S.day<DAYS.length-1?tomorrowLine(S.day+1):`Monday is coming. <b>${S.score}</b> so far.`;
   $('#cShards').innerHTML=balanced?`<div class="lesson" style="--c:#ffb46a"><i></i><span><small>Balance</small>Goal kept and never out of control. A quarter again on the day.</span></div>`:(S.dayDoses===0?`<div class="lesson" style="--c:#f7f0e3"><i></i><span><small>A clear day</small>The habit eased and the house relaxed.</span></div>`:'');
   $('#back').textContent=S.day>=DAYS.length-1?'See where it left me':'Next morning';
   S.well=clamp((blackout||S.clock>=DAYLEN?.6:1)-.35*S.habit,.2,1);
   S.doses=[]; setMusic(HUB_MUS); musId='hub'; S.phase='card'; show('card');
 }
+function dayLedger(met,bonus){
+  const kept=met, streak=kept?(S.streak||0)+1:0; S.streak=streak;
+  const mul=kept?[1,1.5,2,2][Math.min(streak,3)-1]:1, joy=Math.round(S.dayJoy)+bonus;
+  const perf=S.perf, fm=S.flowMax, worryUp=Math.max(0,Math.round(S.worry-S.worry0));
+  const rows=[['Joy earned','+'+joy,'plus']];
+  if(kept) rows.push([streak>1?`Kept · ${streak} in a row`:'Goal kept',`×${mul}`,'plus']); else rows.push(['Goal missed','×1','minus']);
+  const skill=perf*2+Math.round((fm-1)*6); if(skill) rows.push([`${perf} perfect · flow ×${fm.toFixed(1)}`,'+'+skill,'plus']);
+  const cost=S.dayDoses*3+S.lostToday*15+Math.round(worryUp*.5);
+  if(S.dayDoses) rows.push([`${S.dayDoses} door${S.dayDoses>1?'s':''} opened`,'−'+S.dayDoses*3,'minus']);
+  if(S.lostToday) rows.push(['Lost control','−'+S.lostToday*15,'minus']);
+  if(worryUp>=2) rows.push(['Suspicion raised','−'+Math.round(worryUp*.5),'minus']);
+  return {score:Math.max(0,Math.round(joy*mul)+skill-cost),rows,perf,flowMax:fm,kept};
+}
+function countUp(el,to,ms){ const t0=performance.now(); (function f(){ const k=Math.min(1,(performance.now()-t0)/ms); el.textContent=Math.round(to*(1-Math.pow(1-k,3))); if(k<1) requestAnimationFrame(f); })(); }
+function ledgerHTML(rows,totalLabel,total){
+  if(totalLabel) setTimeout(()=>{ const b=document.querySelector('.scr.on .ledger .row.total b'); if(b) countUp(b,total,1100); },300+rows.length*220);
+  return rows.map((r,i)=>`<div class="row ${r[2]||''}" style="--i:${i}"><span>${r[0]}</span><b>${r[1]}</b></div>`).join('')+(totalLabel?`<div class="row total" style="--i:${rows.length}"><span>${totalLabel}</span><b>${total}</b></div>`:'');
+}
+function tomorrowLine(d){
+  const home=NPCS.filter(n=>n.day===d).map(n=>n.name), doors=SUBS.filter(s=>s.x.day===d).length, tasks=TASKS.filter(t=>t.day===d).length;
+  return `Tomorrow is <b>${DAYS[d]}</b>. The goal is <b>${GOALS[d]}</b>.${home.length?` ${home.join(' and ')} ${home.length>1?'are':'is'} home.`:''}${tasks?` ${tasks} new thing${tasks>1?'s':''} to do.`:''}${doors?` ${doors} more door${doors>1?'s':''}.`:''}`;
+}
+const PAR=GOALS.reduce((a,b)=>a+b,0)*2.5;   // every goal met at a x2 streak with some skill: an A
+function gradeOf(t){ return t>=PAR*1.45?'S':t>=PAR?'A':t>=PAR*.65?'B':t>=PAR*.35?'C':'D'; }
+function bestRun(){ try{ return JSON.parse(localStorage.getItem('fd3.best')||'null'); }catch(err){ return null; } }
+function showBest(){ const b=bestRun(), el=$('#tBest'); el.hidden=!b; if(b) el.innerHTML=`Personal best <b>${b.score}</b> · ${b.grade} · ${ENDINGS[b.kind]?ENDINGS[b.kind].h:''}`; }
 function finish(kind){
   const kept=S.kept.filter(Boolean).length;
   endKind=kind||(S.total===0&&kept>=3?'clear':(kept>=3&&S.worry<50&&S.habit<.5?'level':(S.habit>=.5?'hooked':(S.worry>=66?'known':'grey'))));
   const e=ENDINGS[endKind], good=endKind==='level'||endKind==='clear';
   $('#dKicker').textContent=good?'Monday morning':'Afterwards';
   $('#dTitle').textContent=e.h; $('#dText').textContent=e.t;
-  $('#dStats').innerHTML=`<dt>Days kept</dt><dd>${S.kept.filter(Boolean).length} of ${DAYS.length}</dd><dt>Joy</dt><dd>${Math.round(S.joy)}</dd><dt>Doors opened</dt><dd>${S.total} · ${S.order.length} of 14 kinds</dd><dt>The habit</dt><dd>${Math.round(S.habit*100)}%</dd><dt>Times I lost control</dt><dd>${S.lost}</dd>`;
+  if(kind&&S.phase==='play'){ const L=dayLedger(S.dayJoy>=goalNow(),0); S.ledger[S.day]=L; S.score+=L.score; }   // the day it ended early still counts
+  const endMul={clear:1.3,level:1.15,grey:1,known:.7,hooked:.7}[endKind], total=Math.round(S.score*endMul), g=gradeOf(total), best=bestRun(), isBest=!best||total>best.score;
+  if(isBest){ try{ localStorage.setItem('fd3.best',JSON.stringify({score:total,grade:g,kind:endKind})); }catch(err){} }
+  $('#dGrade').innerHTML=`<div class="g ${good?'':'bad'}">${g}</div><div class="n"><b>${total}</b><small>${ENDINGS[endKind].h.replace(/\.$/,'')} · ×${endMul} ending</small><small class="${isBest?'new':''}">${isBest?'New personal best':'Best '+best.score+' · '+best.grade}</small></div>`;
+  const mx=Math.max(1,...S.ledger.map(l=>l?l.score:0));
+  $('#dBars').innerHTML=DAYS.map((d,i)=>{ const l=S.ledger[i]; return `<span class="${l?(S.kept[i]?'kept':'miss'):''}" style="--i:${i};--h:${l?Math.max(4,Math.round(l.score/mx*100)):0}%"><i></i>${d.slice(0,3)}${l?'<em>'+l.score+'</em>':''}</span>`; }).join('');
+  const bestDay=S.ledger.reduce((a,l,i)=>l&&(!a||l.score>a.l.score)?{l,i}:a,null), peak=S.ledger.reduce((a,l)=>Math.max(a,l?l.flowMax:1),1), perfs=S.ledger.reduce((a,l)=>a+(l?l.perf:0),0);
+  $('#dLedger').innerHTML=ledgerHTML([
+    ['Best day',bestDay?`${DAYS[bestDay.i]} · ${bestDay.l.score}`:'—'],
+    ['Peak flow','×'+peak.toFixed(1)],
+    ['Perfect hits',perfs,'plus'],
+    ['Days kept',`${kept} of ${DAYS.length}`,kept>=3?'plus':'minus'],
+    ['Doors opened',`${S.total} · ${S.order.length} of 14 kinds`,S.total?'minus':'plus'],
+    ['The habit',Math.round(S.habit*100)+'%',S.habit>.3?'minus':''],
+    ['At home',STAGES[stage()],stage()?'minus':''],
+    ['Lost control',S.lost+(S.lost===1?' time':' times'),S.lost?'minus':'']]);
   $('#dLessons').innerHTML=S.order.slice(0,5).map(id=>{ const s=SUB[id]; return `<div class="lesson" style="--c:${s.a}"><i></i><span><small>${s.name}</small>${s.lesson}</span></div>`; }).join('');
   const arr=postMat.uniforms.uShard.value, cols=S.order.slice(0,5).map(id=>SUB[id].a); if(!cols.length) cols.push('#ffb46a','#ff6a8a','#b9b4ff');
   cols.forEach((c,i)=>arr.set(hex3(c),i*3)); postMat.uniforms.uShardN.value=cols.length;
@@ -668,7 +712,7 @@ function frame(now){
 
 /* ---------- wiring ---------- */
 function resetAll(){
-  Object.assign(S,{well:1,habit:0,worry:0,joy:0,total:0,taken:{},lost:0,stage:0,flatSaid:false,blackout:false,order:[],kept:[]});
+  Object.assign(S,{well:1,habit:0,worry:0,joy:0,total:0,taken:{},lost:0,stage:0,flatSaid:false,blackout:false,order:[],kept:[],streak:0,score:0,ledger:[]});
   V.sky=0; V.dawn=0; SND.me={}; $('#dEnd').classList.remove('on'); startDay(0);
 }
 function boot(){
@@ -684,6 +728,7 @@ function boot(){
   addEventListener('keydown',e=>{ if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)&&S.phase==='play') e.preventDefault(); if(!e.repeat) keys[e.code]=true; });
   addEventListener('keyup',e=>{ keys[e.code]=false; });
   addEventListener('blur',()=>{ for(const k in keys) keys[k]=false; });
+  showBest();
   $('#begin').addEventListener('click',e=>{ e.currentTarget.blur(); auStart(); sndStart(); sWhoosh(); resetAll(); });
   $('#back').addEventListener('click',e=>{ e.currentTarget.blur(); sSelect(0); if(S.day>=DAYS.length-1) finish(); else startDay(S.day+1); });
   $('#again').addEventListener('click',e=>{ e.currentTarget.blur(); resetAll(); });
