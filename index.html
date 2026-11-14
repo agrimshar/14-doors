@@ -235,6 +235,23 @@ h2{font:700 clamp(26px,4.8vw,72px)/1.02 var(--display);font-style:normal;letter-
 .otext{font:500 12px/1.5 var(--text);letter-spacing:.08em;text-transform:none;color:var(--paper)}
 .look{left:auto;right:var(--pad);transform:none;bottom:clamp(52px,8.5vh,76px)}
 
+.flow{margin-left:10px;font:700 13px/1 var(--mono);letter-spacing:.1em;color:var(--dim);opacity:0;transition:opacity .3s,color .3s}
+.flow.on{opacity:1}.flow.hot{color:var(--neon);text-shadow:0 0 12px var(--neon)}
+.check{position:absolute;left:50%;bottom:clamp(150px,26vh,240px);transform:translateX(-50%);width:min(520px,70vw);padding:16px 20px 12px;border:1px solid var(--paper);background:rgba(6,5,12,.72);backdrop-filter:blur(8px);opacity:0;pointer-events:none;transition:opacity .15s;--hit:0;--miss:0;box-shadow:inset 0 0 0 100vmax rgba(247,240,227,calc(var(--hit)*.22)),inset 0 0 0 100vmax rgba(255,80,60,calc(var(--miss)*.3))}
+.check.on{opacity:1}
+.check.act{border-color:#ffb46a}
+.ktext{margin:0 0 10px;font:700 13px/1 var(--text);letter-spacing:.16em;text-transform:uppercase;color:var(--paper)}
+.kbar{position:relative;height:18px;background:rgba(247,240,227,.12);overflow:hidden}
+.kbar i{position:absolute;top:0;bottom:0;background:linear-gradient(90deg,transparent,var(--paper) 30%,var(--paper) 70%,transparent);opacity:.85}
+.kbar b{position:absolute;top:-3px;bottom:-3px;width:3px;margin-left:-1.5px;background:var(--neon);box-shadow:0 0 10px var(--neon)}
+.krow{display:flex;justify-content:space-between;align-items:center;margin-top:9px}
+.khits i{display:inline-block;width:9px;height:9px;margin-right:7px;transform:rotate(45deg);border:1px solid var(--paper);opacity:.6}
+.khits i.perf{background:var(--neon);border-color:var(--neon);opacity:1;box-shadow:0 0 8px var(--neon)}
+.khits i.good{background:var(--paper);opacity:1}
+.khits i.miss{border-color:#ff5a46;opacity:.9}
+.kmod{font:500 11px/1 var(--mono);letter-spacing:.22em;text-transform:uppercase;color:#ffb46a}
+.check .lab{margin:9px 0 0;opacity:.7}
+
 </style>
 </head>
 <body>
@@ -264,7 +281,7 @@ h2{font:700 clamp(26px,4.8vw,72px)/1.02 var(--display);font-style:normal;letter-
     </div>
     <div id="obj" class="obj">
       <div class="gems" id="dGems"><i></i><i></i><i></i><i></i></div>
-      <div class="oline"><span id="tGain" class="gain"></span><span id="hJoy">0</span><span id="hGoal" class="ogoal">/ 16</span><span class="lab">joy today</span></div>
+      <div class="oline"><span id="tGain" class="gain"></span><span id="hJoy">0</span><span id="hGoal" class="ogoal">/ 16</span><span id="hFlow" class="flow"></span><span class="lab">joy today</span></div>
       <div class="bar2 obar"><i id="oBar"></i></div>
       <p id="oText" class="lab otext"></p>
     </div>
@@ -277,6 +294,7 @@ h2{font:700 clamp(26px,4.8vw,72px)/1.02 var(--display);font-style:normal;letter-
     <div id="hEdge" class="edge">Close to the limit</div>
     <p id="tCap" class="cap"></p>
     <div id="prompt" class="prompt"><i id="pFill"></i><span id="pText"></span></div>
+    <div id="check" class="check"><p id="kText" class="ktext"></p><div class="kbar"><i id="kSpot"></i><b id="kNeedle"></b></div><div class="krow"><span id="kHits" class="khits"></span><span id="kMod" class="kmod"></span></div><p id="kHint" class="lab"></p></div>
     <div class="foot">
       <div class="m4">
         <div class="mini"><span class="lab">The well</span><div class="bar2"><i id="mWell"></i></div></div>
@@ -834,8 +852,8 @@ const X3 = {
 SUBS.forEach(s=>{ s.x=X3[s.id]; });
 
 const DAYS = ['Thursday','Friday','Saturday','Sunday'];
-const DAYLEN = 130;          // seconds of play from 08:00 to midnight
-const GOALS = [12,17,21,24];   // joy needed each day to keep it: exactly what the ordinary tasks (and the truth) can give, so staying clean means doing all of it
+const DAYLEN = 105;          // seconds of play from 08:00 to midnight
+const GOALS = [16,24,30,32];   // joy needed each day: more than the tasks pay at x1, so a sober day is only kept by doing them well and in a row (or by a door)
 
 const TASKS = [
   {id:'work',name:'Do the coursework',x:5.8,z:1.7,day:0,joy:3,kind:'focus',room:'bed',line:'Two pages. They were good pages.'},
@@ -874,6 +892,8 @@ const STORY = {
   days:['','Friday. The rest of the house opened up, and so did the cabinets.','Saturday. Jay texted. Come outside.','Sunday. Whatever I was building, this was the day it showed.'],
   locked:['','Not today. Friday.','Not yet. Saturday.'],
   goal:'That was enough for one day. Bed, or a little more.',
+  flow:'Everything was landing. I did not want to stop.',
+  snap:'And just like that, the thread snapped.',
   again:'It was never the first time twice.',
   flat:'Sober felt flat now. That was new.',
   limit:'I could feel the edge of it coming.',
@@ -1175,7 +1195,10 @@ const VO={
    "You look awful. Are you eating?": "mom_you_look_awful_are_you_eatin.mp3",
    "You seem far away.": "mom_you_seem_far_away.mp3",
    "You sleeping all right?": "mom_you_sleeping_all_right.mp3",
-   "Your eyes are red.": "mom_your_eyes_are_red.mp3"
+   "Your eyes are red.": "mom_your_eyes_are_red.mp3",
+   "What happened?!": "mom_what_happened_cc2f.mp3",
+   "We need to talk. Now.": "mom_we_need_to_talk_now_c51c.mp3",
+   "Mom! Come here. Something is wrong.": "mom_mom_come_here_something_is_95fc.mp3"
   },
   "sis": {
    "Are you feeling okay?": "sis_are_you_feeling_okay.mp3",
@@ -1196,7 +1219,9 @@ const VO={
    "You are sweating. What did you take?": "sis_you_are_sweating_what_did_yo.mp3",
    "You look awful. Are you eating?": "sis_you_look_awful_are_you_eatin.mp3",
    "You seem far away.": "sis_you_seem_far_away.mp3",
-   "Your eyes are red.": "sis_your_eyes_are_red.mp3"
+   "Your eyes are red.": "sis_your_eyes_are_red.mp3",
+   "What happened?!": "sis_what_happened_cc2f.mp3",
+   "We need to talk. Now.": "sis_we_need_to_talk_now_c51c.mp3"
   },
   "dad": {
    "Are you feeling okay?": "dad_are_you_feeling_okay.mp3",
@@ -1215,7 +1240,10 @@ const VO={
    "You are sweating. What did you take?": "dad_you_are_sweating_what_did_yo.mp3",
    "You look awful. Are you eating?": "dad_you_look_awful_are_you_eatin.mp3",
    "You seem far away.": "dad_you_seem_far_away.mp3",
-   "Your eyes are red.": "dad_your_eyes_are_red.mp3"
+   "Your eyes are red.": "dad_your_eyes_are_red.mp3",
+   "What happened?!": "dad_what_happened_cc2f.mp3",
+   "We need to talk. Now.": "dad_we_need_to_talk_now_c51c.mp3",
+   "Mom! Come here. Something is wrong.": "dad_mom_come_here_something_is_95fc.mp3"
   },
   "jay": {
    "Are you feeling okay?": "jay_are_you_feeling_okay.mp3",
@@ -1234,7 +1262,10 @@ const VO={
    "You coming out tonight?": "jay_you_coming_out_tonight.mp3",
    "You look awful. Are you eating?": "jay_you_look_awful_are_you_eatin.mp3",
    "You seem far away.": "jay_you_seem_far_away.mp3",
-   "Your eyes are red.": "jay_your_eyes_are_red.mp3"
+   "Your eyes are red.": "jay_your_eyes_are_red.mp3",
+   "What happened?!": "jay_what_happened_cc2f.mp3",
+   "We need to talk. Now.": "jay_we_need_to_talk_now_c51c.mp3",
+   "Mom! Come here. Something is wrong.": "jay_mom_come_here_something_is_95fc.mp3"
   }
  },
  "me": {
@@ -1268,6 +1299,104 @@ const VO={
   "endHooked": "me_endHooked.mp3",
   "idle": "me_idle.mp3",
   "itch": "me_itch.mp3"
+ },
+ "txt": {
+  "Two pages. They were good pages.": "me_two_pages_they_were_good_p_7adf.mp3",
+  "Perfect. Two pages. They were good pages.": "me_perfect_two_pages_they_wer_ac5a.mp3",
+  "Sloppy. Two pages. They were good pages.": "me_sloppy_two_pages_they_were_59a2.mp3",
+  "I played the same four chords and meant them.": "me_i_played_the_same_four_cho_07c3.mp3",
+  "Perfect. I played the same four chords and meant them.": "me_perfect_i_played_the_same__5bdc.mp3",
+  "Sloppy. I played the same four chords and meant them.": "me_sloppy_i_played_the_same_f_9455.mp3",
+  "She asked about my week. I told her some of it.": "me_she_asked_about_my_week_i__70ec.mp3",
+  "Perfect. She asked about my week. I told her some of it.": "me_perfect_she_asked_about_my_4872.mp3",
+  "Sloppy. She asked about my week. I told her some of it.": "me_sloppy_she_asked_about_my__9131.mp3",
+  "It had a new leaf.": "me_it_had_a_new_leaf_56bd.mp3",
+  "Perfect. It had a new leaf.": "me_perfect_it_had_a_new_leaf_8738.mp3",
+  "Sloppy. It had a new leaf.": "me_sloppy_it_had_a_new_leaf_8a2d.mp3",
+  "Ten minutes of hot water. Nobody could tell after that.": "me_ten_minutes_of_hot_water_n_0192.mp3",
+  "Perfect. Ten minutes of hot water. Nobody could tell after that.": "me_perfect_ten_minutes_of_hot_6666.mp3",
+  "Sloppy. Ten minutes of hot water. Nobody could tell after that.": "me_sloppy_ten_minutes_of_hot__dedd.mp3",
+  "We yelled at the same referee.": "me_we_yelled_at_the_same_refe_c0f1.mp3",
+  "Perfect. We yelled at the same referee.": "me_perfect_we_yelled_at_the_s_05cc.mp3",
+  "Sloppy. We yelled at the same referee.": "me_sloppy_we_yelled_at_the_sa_5b64.mp3",
+  "I was out of breath and it felt like mine.": "me_i_was_out_of_breath_and_it_c527.mp3",
+  "Perfect. I was out of breath and it felt like mine.": "me_perfect_i_was_out_of_breat_b25f.mp3",
+  "Sloppy. I was out of breath and it felt like mine.": "me_sloppy_i_was_out_of_breath_a6e2.mp3",
+  "Someone handed me water and I loved them for it.": "me_someone_handed_me_water_an_db88.mp3",
+  "Every person in the room was the best person I had ever met. I told them so.": "me_every_person_in_the_room_w_e803.mp3",
+  "Tuesday came for all of it.": "me_tuesday_came_for_all_of_it_3c1d.mp3",
+  "The carpet started breathing before I did.": "me_the_carpet_started_breathi_a772.mp3",
+  "Everything was connected to everything. It was hilarious, and it was holy.": "me_everything_was_connected_t_7084.mp3",
+  "Eight hours later I was still relearning how doors work.": "me_eight_hours_later_i_was_st_9596.mp3",
+  "Time went soft around the edges.": "me_time_went_soft_around_the__84fa.mp3",
+  "The song had been playing for four minutes, or for my entire life.": "me_the_song_had_been_playing__8e34.mp3",
+  "I laughed at something. Then I forgot what.": "me_i_laughed_at_something_the_a85d.mp3",
+  "The first two were the best two. They always were.": "me_the_first_two_were_the_bes_d1c0.mp3",
+  "I got louder. I thought that was the same as funnier.": "me_i_got_louder_i_thought_tha_dd45.mp3",
+  "The room kept moving after I stopped.": "me_the_room_kept_moving_after_050f.mp3",
+  "My hands were a long way down.": "me_my_hands_were_a_long_way_d_3c64.mp3",
+  "I watched myself from the far end of a corridor.": "me_i_watched_myself_from_the__52a7.mp3",
+  "Coming back felt like being poured into a body.": "me_coming_back_felt_like_bein_dca3.mp3",
+  "The one nobody counts.": "me_the_one_nobody_counts_122d.mp3",
+  "Lists. Plans. A better version of me by noon.": "me_lists_plans_a_better_versi_5d1e.mp3",
+  "By three I was borrowing from four.": "me_by_three_i_was_borrowing_f_4551.mp3",
+  "Seven seconds of quiet.": "me_seven_seconds_of_quiet_8568.mp3",
+  "Then the wanting it again, which I mistook for needing a break.": "me_then_the_wanting_it_again__fb27.mp3",
+  "It never took me anywhere. It just kept asking.": "me_it_never_took_me_anywhere__71c5.mp3",
+  "I was the most interesting person alive for twenty minutes.": "me_i_was_the_most_interesting_61a8.mp3",
+  "Each line did a little less and asked a little more.": "me_each_line_did_a_little_les_592a.mp3",
+  "The sun came up on a conversation nobody would remember.": "me_the_sun_came_up_on_a_conve_261c.mp3",
+  "One thing. Only one thing. Finally.": "me_one_thing_only_one_thing_f_90a3.mp3",
+  "I organised my whole life in a night and forgot to eat.": "me_i_organised_my_whole_life__5705.mp3",
+  "At four in the morning I was alphabetising something that did not need it.": "me_at_four_in_the_morning_i_w_00de.mp3",
+  "Cleaner. A straight line where the noise used to be.": "me_cleaner_a_straight_line_wh_4d59.mp3",
+  "I could hold the thread for as long as I never looked away.": "me_i_could_hold_the_thread_fo_7508.mp3",
+  "The line kept going after I was done.": "me_the_line_kept_going_after__e0b8.mp3",
+  "The alarm in my chest finally stopped.": "me_the_alarm_in_my_chest_fina_da3e.mp3",
+  "Nothing mattered, and that felt like peace.": "me_nothing_mattered_and_that__4dc2.mp3",
+  "I am missing a Thursday. I have stopped looking for it.": "me_i_am_missing_a_thursday_i__feeb.mp3",
+  "The colours came in on rails.": "me_the_colours_came_in_on_rai_cc01.mp3",
+  "Everything I touched left a line, and the lines made sense.": "me_everything_i_touched_left__cd87.mp3",
+  "I laughed until the geometry let go.": "me_i_laughed_until_the_geomet_3d35.mp3",
+  "It came in waves, and every wave said again.": "me_it_came_in_waves_and_every_aec4.mp3",
+  "I was not chasing the feeling. I was chasing the start of it.": "me_i_was_not_chasing_the_feel_88a0.mp3",
+  "The bag was empty and the wanting was not.": "me_the_bag_was_empty_and_the__4d7a.mp3",
+  "Three breaths, and the room came apart like a curtain.": "me_three_breaths_and_the_room_616d.mp3",
+  "There was nothing to steer. There was only letting go.": "me_there_was_nothing_to_steer_8827.mp3",
+  "Fifteen minutes. I have spent years thinking about them.": "me_fifteen_minutes_i_have_spe_3f08.mp3",
+  "Candy flip. They lifted each other. I have not seen colour like that before or since.": "me_candy_flip_they_lifted_eac_0427.mp3",
+  "Nexus flip. The geometry got a heartbeat.": "me_nexus_flip_the_geometry_go_28bc.mp3",
+  "Kitty flip. Warm, and very far away, at the same time.": "me_kitty_flip_warm_and_very_f_9a6d.mp3",
+  "Coffee and a cigarette. The oldest pairing I know. Small, and it knew its place.": "me_coffee_and_a_cigarette_the_3fa3.mp3",
+  "The smoke outside the bar. Half the reason I went outside was the conversation.": "me_the_smoke_outside_the_bar__869c.mp3",
+  "Blackout. I have no story for this one. That is the story. This is the pairing that stops people breathing.": "me_blackout_i_have_no_story_f_c58e.mp3",
+  "Feels like sober. The tide said level. My heart knew better.": "me_feels_like_sober_the_tide__4419.mp3",
+  "Blunted. The drink sat on the glow like a wet coat.": "me_blunted_the_drink_sat_on_t_f34d.mp3",
+  "Overdrawn. Two withdrawals from the same account.": "me_overdrawn_two_withdrawals__fafa.mp3",
+  "Stacked. More was not more. It was only louder.": "me_stacked_more_was_not_more__59fa.mp3",
+  "One more push. A little extra on top of a lot. I felt it in my jaw.": "me_one_more_push_a_little_ext_91ca.mp3",
+  "Tug of war. The tide says level. The well says otherwise.": "me_tug_of_war_the_tide_says_l_4079.mp3",
+  "Blunted. One of them kept turning the other one down.": "me_blunted_one_of_them_kept_t_daae.mp3",
+  "Sinking. Too far down to see anything.": "me_sinking_too_far_down_to_se_ff14.mp3",
+  "Sinking. Too far down to see anything. I should not have been alone.": "me_sinking_too_far_down_to_se_087e.mp3",
+  "The off switch. It turned the colours down. It works. That is the whole trouble with it.": "me_the_off_switch_it_turned_t_f5cb.mp3",
+  "The amplifier. The green turned everything up. Some nights that tipped it over.": "me_the_amplifier_the_green_tu_fdbe.mp3",
+  "Too many doors. Two infinities do not add. I held on to the floor.": "me_too_many_doors_two_infinit_4a4e.mp3",
+  "Far out. I went a long way and brought back very little I could say.": "me_far_out_i_went_a_long_way__1721.mp3",
+  "Lifted. They lifted each other.": "me_lifted_they_lifted_each_ot_062a.mp3",
+  "Sharp edges. The wonder was there. So was the grinding of my teeth.": "me_sharp_edges_the_wonder_was_16c8.mp3",
+  "The spins. The room turned and I turned the other way.": "me_the_spins_the_room_turned__6507.mp3",
+  "Crossed wires. Fast heart, slow thoughts.": "me_crossed_wires_fast_heart_s_3c28.mp3",
+  "Side by side. They mostly ignored each other.": "me_side_by_side_they_mostly_i_e32d.mp3",
+  "They looked at me a second too long.": "me_they_looked_at_me_a_second_85e5.mp3",
+  "Everything was landing. I did not want to stop.": "me_everything_was_landing_i_d_3164.mp3",
+  "And just like that, the thread snapped.": "me_and_just_like_that_the_thr_8ea7.mp3",
+  "Steady. They bought it.": "me_steady_they_bought_it_4bc9.mp3",
+  "I held it together. Just.": "me_i_held_it_together_just_ad53.mp3",
+  "My face gave it away.": "me_my_face_gave_it_away_efc7.mp3",
+  "Midnight. I fell asleep where I was standing.": "me_midnight_i_fell_asleep_whe_4361.mp3",
+  "They had started to notice.": "me_they_had_started_to_notice_70bc.mp3",
+  "Now they were watching me.": "me_now_they_were_watching_me_e0f3.mp3"
  }
 };
 /* ---------- generated audio: music beds, ambience, voice (ElevenLabs) layered over the procedural sfx ---------- */
@@ -1290,13 +1419,15 @@ function sndSay(who,text){ const m=VO.npc[who]; if(m&&m[text]) sndVoice(m[text],
 function sndMe(key){ if(SND.me[key]) return; SND.me[key]=true; sndVoice(VO.me[key],.9); }
 function sndStory(txt){
   if(!SND.rev){ SND.rev={}; for(const k in STORY){ const v=STORY[k]; if(typeof v==='string') SND.rev[v]=k; else v.forEach((t,i)=>{ if(t) SND.rev[t]=k==='days'?'day'+i:'locked'+i; }); } }
-  const k=SND.rev[txt]; if(k) { SND.me[k]=false; sndMe(k); }
+  const k=SND.rev[txt]; if(k) { SND.me[k]=false; sndMe(k); return; }
+  const f=VO.txt&&VO.txt[txt]; if(f) sndVoice(f,.9);   // every other caption has its own line
 }
 function sndTick(dt){
   if(!SND.on) return;
   const ph=S.phase, t=clamp(S.clock/DAYLEN), d=dominant(), hi=d&&doseK(d)>.05;
   const bed=ph==='end'?'end':ph==='play'?(hi?'high':stage()>=1?'worry':t>.62?'night':'hub'):'hub';
   for(const k of ['hub','night','high','worry','end']) sndLayer(SND.beds,k,'music/'+k+'.mp3',k===bed?.42:0);
+  const fl=ph==='play'&&!hi?(S.flow||0):0; sndLayer(SND.beds,'flow','music/'+(bed==='night'?'high':'night')+'.mp3',fl*.2);   // flow stacks a second bed under the first
   const yard=ph==='play'&&P.z>13.5?1:0, dawn=ph==='card'||ph==='end'?1:0;
   sndLayer(SND.amb,'room','sfx/room.mp3',ph==='play'?.22*(1-yard):0);
   sndLayer(SND.amb,'yard','sfx/yard.mp3',ph==='play'?.3*yard:0);
@@ -1310,6 +1441,61 @@ function sndTick(dt){
   }
   if(ph==='play'&&!C){ const v=Math.hypot(P.vx,P.vz); SND.stepT=(SND.stepT||0)-dt*v; if(v>.6&&SND.stepT<=0){ SND.stepT=.95; sndFx('step',.35); } }
 }
+
+/* ---------- the hands: a needle sweeps a bar, you press in the sweet spot three times ---------- */
+const K={on:false};
+function checkMods(){
+  // what is in the blood decides how the needle moves; sober with a deep habit it goes flat (fast, narrow)
+  const d=dominant(), L=load(), m={speed:1,width:1,sway:0,drift:0,mirror:0,lag:0,why:''};
+  if(d){
+    const k=doseK(d), c=d.s.cls, id=d.s.id;
+    if(c==='stim'||c==='lite'){ m.speed*=lerp(1,.6,k); m.width*=lerp(1,1.5,k); m.why='sharp'; }
+    else if(id==='al'||c==='dep'){ m.sway=.17*k; m.why='swaying'; }
+    else if(c==='can'){ m.speed*=lerp(1,.55,k); m.drift=.24*k; m.why='drifting'; }
+    else if(c==='psy'){ m.mirror=k; m.speed*=lerp(1,.8,k); m.why='mirrored'; }
+    else if(c==='emp'){ m.width*=lerp(1,1.25,k); m.speed*=lerp(1,1.3,k); m.why='warm'; }
+    else if(c==='dis'){ m.lag=.22*k; m.speed*=lerp(1,.7,k); m.why='late'; }
+  } else if(S.habit>.5){ const h=(S.habit-.5)/.5; m.width*=1-.45*h; m.speed*=1+.3*h; m.why='flat'; }
+  if(S.well<.2){ m.speed*=1.25; m.why=m.why||'tired'; }
+  if(L>limit()*.85){ m.sway=Math.max(m.sway,.12); m.why='over'; }
+  return m;
+}
+function startCheck(o){
+  Object.assign(K,{on:true,t:0,p:Math.random(),dir:1,need:o.need||3,hits:[],speed:o.speed||1,width:o.width||.2,label:o.label,onEnd:o.onEnd,kind:o.kind||'task',c:R(.3,.7),wait:0,flash:0,hist:[],done:0});
+  hold=0; keys.KeyE=keys.Space=false;
+  const el=$('#check'); el.classList.add('on'); el.classList.toggle('act',K.kind==='act');
+  $('#kText').textContent=o.label; $('#kHint').textContent=o.hint||'Press E when the needle is in the light'; kDots();
+}
+function kDots(){ $('#kHits').innerHTML=Array.from({length:K.need},(_,i)=>`<i class="${K.hits[i]===undefined?'':K.hits[i]>=1?'perf':K.hits[i]>0?'good':'miss'}"></i>`).join(''); }
+function kCenter(m){ return clamp(K.c+Math.sin(G*.9)*m.drift,.08,.92); }
+function kScore(s){ K.hits.push(s); K.c=R(.25,.75); K.wait=0; K.flash=s>0?1:-1; kDots(); sndFx(s>=1?'shard':s>0?'task':'step',s>=1?.9:s>0?.5:.6); if(K.hits.length>=K.need) K.done=.6; }
+function kPress(){
+  if(!K.on||K.hits.length>=K.need) return;
+  const m=K.m||checkMods();
+  let p=K.p; if(m.lag>0){ const h=K.hist.find(h=>h.t<=G-m.lag); if(h) p=h.p; }
+  const d=Math.abs(p-kCenter(m)), w=K.width*m.width;
+  kScore(d<=w*.22?1:d<=w*.5?.6:0);
+}
+function cancelCheck(){ if(!K.on) return; K.on=false; $('#check').classList.remove('on'); }
+function updCheck(dt){
+  if(!K.on) return;
+  const m=K.m=checkMods();
+  K.t+=dt;
+  if(K.hits.length<K.need){
+    K.p+=K.dir*dt*K.speed*m.speed*1.9; if(K.p>1){ K.p=2-K.p; K.dir=-1; } if(K.p<0){ K.p=-K.p; K.dir=1; }
+    K.hist.unshift({t:G,p:K.p}); if(K.hist.length>60) K.hist.pop();
+    K.wait+=dt; if(K.wait>2.6/(K.speed*m.speed)){ kScore(0); }   // hesitating is a miss too
+  } else { K.done-=dt; if(K.done<=0){ K.on=false; $('#check').classList.remove('on'); keys.KeyE=keys.Space=false; const avg=K.hits.reduce((a,b)=>a+b,0)/K.need; K.onEnd(avg,K.hits); return; } }
+  K.flash*=Math.exp(-dt*5);
+  const c=kCenter(m), w=K.width*m.width;
+  let p=clamp(K.p+(m.sway?Math.sin(G*3.1)*m.sway:0)); if(m.mirror>.5) p=1-p;
+  $('#kSpot').style.left=((c-w/2)*100)+'%'; $('#kSpot').style.width=(w*100)+'%';
+  $('#kNeedle').style.left=(p*100)+'%';
+  const el=$('#check'); el.style.setProperty('--hit',K.flash>0?K.flash:0); el.style.setProperty('--miss',K.flash<0?-K.flash:0);
+  $('#kMod').textContent=m.why;
+}
+addEventListener('keydown',e=>{ if(K.on&&(e.code==='KeyE'||e.code==='Space')&&!e.repeat){ e.preventDefault(); kPress(); } });
+addEventListener('mousedown',e=>{ if(K.on&&S.phase==='play') kPress(); });
 
 /* ---------- procedural surfaces: wall plaster, floors, grass, posters, the city outside ---------- */
 const TEX={}, CITY={mats:[],grass:null,glow:[]};
@@ -1756,7 +1942,7 @@ function takeDose(s,forced){
   else if(combo) caption(combo.name+'. '+combo.line,6);
   else caption(n?STORY.again:(tot?s.lines[1]:s.lines[0]),5);
   const seer=visibleNpc(7);
-  if(seer&&s.x.load>=.3){ S.worry+=18; say(seer,pick(SAY.caught),3.5); }
+  if(seer&&s.x.load>=.3){ S.worry+=18; say(seer,pick(SAY.caught),3.5); breakFlow(); }
   if(combo&&combo.black) startLoss('blackout');
 }
 let musId='';
@@ -1768,7 +1954,7 @@ function musicFor(){
 /* ---------- losing control ---------- */
 function startLoss(type,target){
   if(C&&C.type==='blackout') return;
-  C={type,target,t:0,hit:false}; S.lostToday++; S.lost++; hold=0;
+  C={type,target,t:0,hit:false}; S.lostToday++; S.lost++; hold=0; cancelCheck(); breakFlow();
   $('#lost').classList.add('on'); sBlack();
   if(type==='blackout'){ caption(S.well<=0?STORY.dry:STORY.blackout,6); fadeTo=()=>endDay(true); }
   else caption(STORY[type],5);
@@ -1836,10 +2022,10 @@ function updNpc(n,dt){
   }
   const d=dist(n,P); n.sees=d<6.5&&los(n.x,n.z,P.x,P.z);
   if(n.sees&&(n.wait>0||stage()>0)) n.face=Math.atan2(P.x-n.x,P.z-n.z);
-  n.cool-=dt;
+  n.cool-=dt; if(n.quiz>0) n.quiz-=dt;
   if(n.sees&&S.phase==='play'&&!C){
     const tl=tells();
-    if(tl>.2){ S.worry+=tl*7*dt; if(n.cool<=0) say(n,pick(SAY.seen),3); }
+    if(tl>.2){ S.worry+=tl*2.5*dt; if(n.cool<=0&&!K.on&&d<5.5&&(n.quiz||0)<=0) actNormal(n,tl); }
     else if(S.well<.2){ S.worry+=1.5*dt; if(n.cool<=0) say(n,'You look awful. Are you eating?',3); }
     else if(n.cool<=0&&d<3.2) say(n,stage()===2?pick(SAY.worried):pick(SAY.calm[n.d.id]),3);
   }
@@ -1848,6 +2034,14 @@ function updNpc(n,dt){
   if(n.f.mixer){ figurePose(n.f,n.moving?'walk':'idle'); n.f.mixer.update(dt); } n.moving=false;
   n.f.mark.visible=stage()===2; n.f.mark.rotation.y=G*2;
   if(n.el.classList.contains('on')) place(n.el,n.x,2.3,n.z);
+}
+function actNormal(n,tl){
+  // they stop you with a question; the more in your blood, the faster and narrower the answer has to be
+  say(n,pick(SAY.seen),4); n.quiz=26; n.wait=Math.max(n.wait,7); n.face=Math.atan2(P.x-n.x,P.z-n.z);
+  startCheck({kind:'act',label:'Act normal · '+n.d.name,hint:'Press E in the light, twice',speed:.9+tl*1.4,width:.2*(1-tl*.55),need:2,onEnd:avg=>{
+    if(avg>=.5){ S.worry=Math.max(0,S.worry-9); say(n,pick(SAY.calm[n.d.id]),3); caption(avg>=.99?'Steady. They bought it.':'I held it together. Just.',3.5); }
+    else { S.worry+=15+tl*22; say(n,pick(SAY.caught),3.5); caption('My face gave it away.',3.5); breakFlow(); V.red=.5; }
+  }});
 }
 function place(el,x,y,z){
   vTmp.set(x,y,z).project(camera);
@@ -1870,14 +2064,24 @@ function taskMult(t){
   if(S.well<.2) m*=.5;
   return {m,slow};
 }
-function doTask(t){
-  const {m}=taskMult(t); S.done[t.id]=true; addJoy(t.joy*m);
+const flowMult=()=>1+2*(S.flow||0);
+function breakFlow(){ if((S.flow||0)>.3) caption(STORY.snap,3.5); S.flow=0; S.flowT=0; }
+function bloom(room,v){ const l=lamps[room]; if(l) l.userData.bloom=Math.max(l.userData.bloom||0,v); }
+function bloomAll(v){ for(const k in lamps) bloom(k,v); }
+function startTask(t){
+  const sp={focus:.9,play:1.15,bond:.8,care:.7}[t.kind]||1;
+  startCheck({label:t.name,speed:sp*(t.id==='hoops'?1.3:1),width:.2,need:3,onEnd:avg=>doTask(t,avg)});
+}
+function doTask(t,avg=.6){
+  const {m}=taskMult(t), skill=.5+1.5*avg, fm=flowMult(); S.done[t.id]=true; addJoy(t.joy*m*skill*fm);
+  if(avg>=.5){ const was=S.flow||0; S.flow=clamp(was+.34); S.flowT=22; if(was<.6&&S.flow>=.6) setTimeout(()=>caption(STORY.flow,4),2800); } else S.flowT=Math.min(S.flowT||0,5);
+  bloom(t.room,.5+avg*1.2); V.flash=.08+.3*avg;
   if(t.well) S.well=clamp(S.well+t.well);
   if(t.id==='shower') S.shower=30;
   if(t.kind==='bond'){ if(tells()>.35){ S.worry+=10; caption('They looked at me a second too long.',4); } else { if(load()<.1) S.worry=Math.max(0,S.worry-8); caption(t.line,4.5); } }
-  else caption(t.line,4.5);
+  else caption((avg>=.99?'Perfect. ':avg<.34?'Sloppy. ':'')+t.line,4.5);
   t.ring.material.opacity=.15; if(lamps[t.room]) lamps[t.room].userData.lit=true;
-  sShard(); sndFx('task',.8); V.flash=.12; hudTasks();
+  sShard(); sndFx(avg>=.99?'shard':'task',.8); hudTasks();
 }
 function talk(){ S.talked=true; S.worry=Math.max(0,S.worry-30); S.habit=clamp(S.habit-.08); addJoy(5); caption(STORY.talk,6); sShard(); const m=npcs[0]; say(m,'Thank you for telling me.',4); }
 function findNear(){
@@ -1893,13 +2097,13 @@ function findNear(){
 }
 function promptFor(st){
   if(st.type==='sub') return {text:st.s.name+' · +'+Math.round(doseJoy(st.s))+' joy',time:.7};
-  if(st.type==='task'){ const k=taskMult(st.t); return {text:st.t.name+' · +'+Math.round(st.t.joy*k.m)+' joy',time:1.8*k.slow}; }
+  if(st.type==='task'){ const k=taskMult(st.t), fm=flowMult(); return {text:st.t.name+' · +'+Math.round(st.t.joy*k.m*.5*fm)+'–'+Math.round(st.t.joy*k.m*2*fm)+' joy',time:.6}; }
   if(st.type==='bed') return {text:'Sleep, and end '+DAYS[S.day],time:1.4};
   return {text:'Tell her the truth',time:2};
 }
 function act(st){
   if(st.type==='sub') takeDose(st.s);
-  else if(st.type==='task') doTask(st.t);
+  else if(st.type==='task') startTask(st.t);
   else if(st.type==='bed') endDay(false);
   else talk();
 }
@@ -1918,7 +2122,7 @@ function target(){
 
 /* ---------- a day ---------- */
 function startDay(d){
-  S.idle=0; S.idleSaid=false; S.itchSaid=false;
+  S.idle=0; S.idleSaid=false; S.itchSaid=false; S.flow=0; S.flowT=0; cancelCheck();
   Object.assign(S,{day:d,clock:0,doses:[],today:{},done:{},dayJoy:0,dayDoses:0,lostToday:0,talked:false,shower:0,chain:0,cool:0,warned:false,goalSaid:false});
   const bo=S.blackout; S.blackout=false;
   P.x=bo?(d>=1?9:9):2.4; P.z=bo?(d>=1?4.2:7.2):1.6; P.vx=P.vz=0; C=null; fade=1; fadeTo=null; inputQ.length=0; yaw=bo?R(TAU):3.68; pitch=-.05;
@@ -1935,6 +2139,7 @@ function startDay(d){
   setTimeout(()=>caption(d===0?STORY.open:STORY.days[d],6),900);
 }
 function endDay(blackout){
+  cancelCheck();
   if(S.phase!=='play') return;
   const avail=TASKS.filter(t=>S.day>=t.day), done=avail.filter(t=>S.done[t.id]).length;
   const met=S.dayJoy>=goalNow(); S.kept[S.day]=met;
@@ -1988,7 +2193,7 @@ function hud(){
   const g=goalNow(), met=S.dayJoy>=g;
   $('#hJoy').textContent=Math.round(S.dayJoy); $('#hGoal').textContent='/ '+g;
   $('#oBar').style.transform=`scaleX(${clamp(S.dayJoy/g)})`; $('#obj').classList.toggle('met',met);
-  if(met&&!S.goalSaid){ S.goalSaid=true; caption(STORY.goal,5); sShard(); S.bed.ring.material.color.setHex(0xffb46a); }
+  if(met&&!S.goalSaid){ S.goalSaid=true; caption(STORY.goal,5); sShard(); sndFx('shard',.9); bloomAll(1.6); V.flash=.4; S.bed.ring.material.color.setHex(0xffb46a); }
   $('#oText').textContent=met?'Goal kept. Get to bed before midnight, or stay up for more.':`Reach ${g} joy, then sleep before midnight.`;
   const tg=target(), dx=tg.x-P.x, dz=tg.z-P.z, dd=Math.hypot(dx,dz);
   let a=Math.atan2(-dx,-dz)-yaw; a=Math.atan2(Math.sin(a),Math.cos(a));
@@ -2001,6 +2206,7 @@ function hud(){
   $('#mLim').style.left=(lim/1.4*100)+'%';
   $('#mHab').style.transform=`scaleX(${clamp(S.habit)})`; $('#mHab').classList.toggle('hot',S.habit>.5);
   $('#mHome').style.transform=`scaleX(${clamp(S.worry/100)})`; $('#mHome').classList.toggle('hot',S.worry>=66);
+  const fm=flowMult(), fe=$('#hFlow'); fe.textContent='×'+fm.toFixed(1)+' flow'; fe.classList.toggle('on',(S.flow||0)>.03); fe.classList.toggle('hot',fm>=2.3);
   const pr=$('#prompt');
   if(near&&!C){ const p=promptFor(near); pr.classList.add('on'); $('#pText').textContent='Hold E · '+p.text; $('#pFill').style.transform=`scaleX(${clamp(hold)})`; }
   else pr.classList.remove('on');
@@ -2024,8 +2230,10 @@ function updPlay(dt){
   if(over) sway=Math.max(sway,.6);
   if(C){ autopilot(dt); if(C&&C.type!=='blackout'&&C.type!=='scramble'&&Math.hypot(P.vx,P.vz)>.5){ let a=Math.atan2(-P.vx,-P.vz)-yaw; a=Math.atan2(Math.sin(a),Math.cos(a)); yaw+=a*Math.min(1,6*dt); } }
   else { yaw+=((keys.ArrowLeft?1:0)-(keys.ArrowRight?1:0))*2.3*dt; if(sway>0) yaw+=Math.sin(G*1.1)*.35*sway*dt; }
+  if(S.flowT>0) S.flowT-=dt; else if(S.flow>0) S.flow=clamp(S.flow-dt/14);
+  updCheck(dt); if(S.phase!=='play') return;
   if(!C&&S.phase==='play'){
-    let i=inputDir();
+    let i=K.on?{x:0,z:0}:inputDir();
     if(lag>.05){ inputQ.push({t:G,x:i.x,z:i.z}); while(inputQ.length>1&&inputQ[1].t<G-lag) inputQ.shift(); i=inputQ[0]; } else inputQ.length=0;
     let tx=i.x, tz=i.z;
     if(sway>0){ const m=Math.hypot(tx,tz); tx+=Math.sin(G*1.7)*.7*sway*(m>0?1:.25); tz+=Math.cos(G*1.3)*.5*sway*(m>0?1:.25); }
@@ -2039,7 +2247,7 @@ function updPlay(dt){
   // interaction
   for(const t of TASKS) if(S.done[t.id]) t.beam.visible=false;
   S.bed.beam.visible=S.dayJoy>=goalNow();
-  near=C?null:findNear();
+  near=C||K.on?null:findNear();
   if(near&&(keys.KeyE||keys.Space)){ hold+=dt/promptFor(near).time; if(hold>=1){ hold=0; keys.KeyE=keys.Space=false; act(near); } } else hold=Math.max(0,hold-dt*2);
   if(S.phase!=='play') return;
   // lights that only show when something is in your blood
@@ -2093,7 +2301,9 @@ function updScene(dt){
   sun.intensity=lerp(1.1,.4,night); sun.color.setRGB(lerp(1,.5,night),lerp(lerp(.93,.8,morn),.6,night),lerp(lerp(.85,.6,morn),1,night));
   sun.position.set(10+Math.cos(t*Math.PI)*14,16,11-8+Math.sin(t*Math.PI)*4);
   hemi.intensity=lerp(.5,.34,night);
-  for(const k in lamps){ const l=lamps[k]; const target=(l.userData.lit?1.7:.95)+night*.5; l.intensity+=(target-l.intensity)*Math.min(1,dt*2); }
+  const flow=S.phase==='play'?(S.flow||0):0, warm=S.kept.filter(Boolean).length*.22;
+  for(const k in lamps){ const l=lamps[k], b=l.userData.bloom||0; const target=(l.userData.lit?1.7:.95)+night*.5+flow*.9+warm*.5+b*2.6; l.intensity+=(target-l.intensity)*Math.min(1,dt*(b>.1?8:2)); l.userData.bloom=b*Math.exp(-dt*2.2); }
+  hemi.intensity+=flow*.12+warm*.08*morn; sun.color.r=Math.min(1,sun.color.r+warm*.1*morn); sun.color.b=Math.max(0,sun.color.b-warm*.12*morn);
   // sky
   const K=[[0x3b2fa0,0xff7ab8,0xffd08a],[0x1a1250,0xc0308f,0xff6a3a],[0x05041a,0x2a1260,0x7a2f8f]];
   const seg=t<.6?0:1, f2=seg?clamp((t-.6)/.3):t/.6, U=sky.material.uniforms, names=['top','mid','bot'];
