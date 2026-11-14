@@ -629,7 +629,7 @@ function frame(now){
 /* ---------- wiring ---------- */
 function resetAll(){
   Object.assign(S,{well:1,habit:0,worry:0,joy:0,total:0,taken:{},lost:0,stage:0,flatSaid:false,blackout:false,order:[],kept:[]});
-  V.sky=0; V.dawn=0; $('#dEnd').classList.remove('on'); startDay(0);
+  V.sky=0; V.dawn=0; SND.me={}; $('#dEnd').classList.remove('on'); startDay(0);
 }
 function boot(){
   if(!window.THREE){ fail('The 3D library did not load. Check the connection and reload.'); return; }
