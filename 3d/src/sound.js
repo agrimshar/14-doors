@@ -18,7 +18,7 @@ function sndSay(who,text){ const m=VO.npc[who]; if(m&&m[text]) sndVoice(m[text],
 function sndMe(key){ if(SND.me[key]) return; SND.me[key]=true; sndVoice(VO.me[key],.9); }
 function sndStory(txt){
   if(!SND.rev){ SND.rev={}; for(const k in STORY){ const v=STORY[k]; if(typeof v==='string') SND.rev[v]=k; else v.forEach((t,i)=>{ if(t) SND.rev[t]=k==='days'?'day'+i:'locked'+i; }); } }
-  const k=SND.rev[txt]; if(k) { SND.me[k]=false; sndMe(k); return; }
+  const k=SND.rev[txt]; if(k&&VO.me[k]) { SND.me[k]=false; sndMe(k); return; }
   const f=VO.txt&&VO.txt[txt]; if(f) sndVoice(f,.9);   // every other caption has its own line
 }
 function sndTick(dt){
@@ -26,7 +26,8 @@ function sndTick(dt){
   const ph=S.phase, t=clamp(S.clock/DAYLEN), d=dominant(), hi=d&&doseK(d)>.05;
   const bed=ph==='end'?'end':ph==='play'?(hi?'high':stage()>=1?'worry':t>.62?'night':'hub'):'hub';
   for(const k of ['hub','night','high','worry','end']) sndLayer(SND.beds,k,'music/'+k+'.mp3',k===bed?.42:0);
-  const fl=ph==='play'&&!hi?(S.flow||0):0; sndLayer(SND.beds,'flow','music/'+(bed==='night'?'high':'night')+'.mp3',fl*.2);   // flow stacks a second bed under the first
+  const fl=ph==='play'&&!hi?(S.flow||0):0, fb=bed==='night'?'high':'night';   // flow stacks a second bed under the first
+  for(const k of ['night','high']) sndLayer(SND.beds,'flow_'+k,'music/'+k+'.mp3',k===fb?fl*.2:0);
   const yard=ph==='play'&&P.z>13.5?1:0, dawn=ph==='card'||ph==='end'?1:0;
   sndLayer(SND.amb,'room','sfx/room.mp3',ph==='play'?.22*(1-yard):0);
   sndLayer(SND.amb,'yard','sfx/yard.mp3',ph==='play'?.3*yard:0);

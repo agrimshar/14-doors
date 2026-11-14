@@ -1419,7 +1419,7 @@ function sndSay(who,text){ const m=VO.npc[who]; if(m&&m[text]) sndVoice(m[text],
 function sndMe(key){ if(SND.me[key]) return; SND.me[key]=true; sndVoice(VO.me[key],.9); }
 function sndStory(txt){
   if(!SND.rev){ SND.rev={}; for(const k in STORY){ const v=STORY[k]; if(typeof v==='string') SND.rev[v]=k; else v.forEach((t,i)=>{ if(t) SND.rev[t]=k==='days'?'day'+i:'locked'+i; }); } }
-  const k=SND.rev[txt]; if(k) { SND.me[k]=false; sndMe(k); return; }
+  const k=SND.rev[txt]; if(k&&VO.me[k]) { SND.me[k]=false; sndMe(k); return; }
   const f=VO.txt&&VO.txt[txt]; if(f) sndVoice(f,.9);   // every other caption has its own line
 }
 function sndTick(dt){
@@ -1427,7 +1427,8 @@ function sndTick(dt){
   const ph=S.phase, t=clamp(S.clock/DAYLEN), d=dominant(), hi=d&&doseK(d)>.05;
   const bed=ph==='end'?'end':ph==='play'?(hi?'high':stage()>=1?'worry':t>.62?'night':'hub'):'hub';
   for(const k of ['hub','night','high','worry','end']) sndLayer(SND.beds,k,'music/'+k+'.mp3',k===bed?.42:0);
-  const fl=ph==='play'&&!hi?(S.flow||0):0; sndLayer(SND.beds,'flow','music/'+(bed==='night'?'high':'night')+'.mp3',fl*.2);   // flow stacks a second bed under the first
+  const fl=ph==='play'&&!hi?(S.flow||0):0, fb=bed==='night'?'high':'night';   // flow stacks a second bed under the first
+  for(const k of ['night','high']) sndLayer(SND.beds,'flow_'+k,'music/'+k+'.mp3',k===fb?fl*.2:0);
   const yard=ph==='play'&&P.z>13.5?1:0, dawn=ph==='card'||ph==='end'?1:0;
   sndLayer(SND.amb,'room','sfx/room.mp3',ph==='play'?.22*(1-yard):0);
   sndLayer(SND.amb,'yard','sfx/yard.mp3',ph==='play'?.3*yard:0);
@@ -1467,13 +1468,14 @@ function startCheck(o){
   $('#kText').textContent=o.label; $('#kHint').textContent=o.hint||'Press E when the needle is in the light'; kDots();
 }
 function kDots(){ $('#kHits').innerHTML=Array.from({length:K.need},(_,i)=>`<i class="${K.hits[i]===undefined?'':K.hits[i]>=1?'perf':K.hits[i]>0?'good':'miss'}"></i>`).join(''); }
+function kShown(p,m){ p=clamp(p+(m.sway?Math.sin(G*3.1)*m.sway:0)); return m.mirror>.5?1-p:p; }   // what the player sees is what gets scored
 function kCenter(m){ return clamp(K.c+Math.sin(G*.9)*m.drift,.08,.92); }
 function kScore(s){ K.hits.push(s); K.c=R(.25,.75); K.wait=0; K.flash=s>0?1:-1; kDots(); sndFx(s>=1?'shard':s>0?'task':'step',s>=1?.9:s>0?.5:.6); if(K.hits.length>=K.need) K.done=.6; }
 function kPress(){
   if(!K.on||K.hits.length>=K.need) return;
   const m=K.m||checkMods();
   let p=K.p; if(m.lag>0){ const h=K.hist.find(h=>h.t<=G-m.lag); if(h) p=h.p; }
-  const d=Math.abs(p-kCenter(m)), w=K.width*m.width;
+  const d=Math.abs(kShown(p,m)-kCenter(m)), w=K.width*m.width;
   kScore(d<=w*.22?1:d<=w*.5?.6:0);
 }
 function cancelCheck(){ if(!K.on) return; K.on=false; $('#check').classList.remove('on'); }
@@ -1488,7 +1490,7 @@ function updCheck(dt){
   } else { K.done-=dt; if(K.done<=0){ K.on=false; $('#check').classList.remove('on'); keys.KeyE=keys.Space=false; const avg=K.hits.reduce((a,b)=>a+b,0)/K.need; K.onEnd(avg,K.hits); return; } }
   K.flash*=Math.exp(-dt*5);
   const c=kCenter(m), w=K.width*m.width;
-  let p=clamp(K.p+(m.sway?Math.sin(G*3.1)*m.sway:0)); if(m.mirror>.5) p=1-p;
+  const p=kShown(K.p,m);
   $('#kSpot').style.left=((c-w/2)*100)+'%'; $('#kSpot').style.width=(w*100)+'%';
   $('#kNeedle').style.left=(p*100)+'%';
   const el=$('#check'); el.style.setProperty('--hit',K.flash>0?K.flash:0); el.style.setProperty('--miss',K.flash<0?-K.flash:0);
