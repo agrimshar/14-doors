@@ -29,6 +29,7 @@ function sndTick(dt){
   sndLayer(SND.amb,'room','sfx/room.mp3',ph==='play'?.22*(1-yard):0);
   sndLayer(SND.amb,'yard','sfx/yard.mp3',ph==='play'?.3*yard:0);
   sndLayer(SND.amb,'dawn','sfx/dawn.mp3',.25*dawn);
+  if(AU.muted&&SND.voice){ try{ SND.voice.pause(); }catch(e){} SND.voice=null; SND.duck=1; }
   const mute=AU.muted?0:1, k=Math.min(1,dt*1.6);
   for(const map of [SND.beds,SND.amb]) for(const id in map){
     const a=map[id], want=a.tgt*mute*(map===SND.beds?SND.duck:1);
