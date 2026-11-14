@@ -20,13 +20,12 @@
       <p class="eyebrow">A true story, four days long</p>
       <h1>Fourteen <em>Doors</em></h1>
       <p class="lede">It started in my room with the door shut. Fourteen small doors were hidden around the house, and my family was on the other side of the wall. These are four days of trying to enjoy my life without losing hold of it.</p>
-      <ul class="rules">
-        <li>Each day has a joy goal. Reach it, then get to bed before midnight. Keep three of the four days.</li>
-        <li>Ordinary things give joy. Follow the marker at the top of the screen to the next one.</li>
-        <li>The glowing doors give joy faster. Each one costs you, and each repeat pays less.</li>
-        <li>Stay under your limit. Past it, your hands stop being yours.</li>
-        <li>If the family finds out, or the habit fills, it is over.</li>
-      </ul>
+      <ol class="steps">
+        <li><small>01 · The goal</small>Each day has a joy number. Reach it and be in bed before midnight. Keep three of four days.</li>
+        <li><small>02 · Do it well</small>Hold E at anything worth doing, then hit the needle in the light. Perfect pays double. Chain them for flow.</li>
+        <li><small>03 · The doors</small>Fourteen of them pay faster and cost more. Past your limit your hands stop being yours; if the family finds out, it is over.</li>
+      </ol>
+      <p id="tBest" class="best" hidden></p>
       <button id="begin" class="btn solid">Wake up</button>
       <p class="fine">Click to look, WASD to walk, hold E to act. Headphones on. A story, and never a guide.</p>
     </div>
@@ -38,7 +37,7 @@
     </div>
     <div id="obj" class="obj">
       <div class="gems" id="dGems"><i></i><i></i><i></i><i></i></div>
-      <div class="oline"><span id="tGain" class="gain"></span><span id="hJoy">0</span><span id="hGoal" class="ogoal">/ 16</span><span class="lab">joy today</span></div>
+      <div class="oline"><span id="tGain" class="gain"></span><span id="hJoy">0</span><span id="hGoal" class="ogoal">/ 16</span><span id="hFlow" class="flow"></span><span class="lab">joy today</span></div>
       <div class="bar2 obar"><i id="oBar"></i></div>
       <p id="oText" class="lab otext"></p>
     </div>
@@ -51,6 +50,7 @@
     <div id="hEdge" class="edge">Close to the limit</div>
     <p id="tCap" class="cap"></p>
     <div id="prompt" class="prompt"><i id="pFill"></i><span id="pText"></span></div>
+    <div id="check" class="check"><p id="kText" class="ktext"></p><div class="kbar"><i id="kSpot"></i><b id="kNeedle"></b></div><div class="krow"><span id="kHits" class="khits"></span><span id="kMod" class="kmod"></span></div><p id="kHint" class="lab"></p></div>
     <div class="foot">
       <div class="m4">
         <div class="mini"><span class="lab">The well</span><div class="bar2"><i id="mWell"></i></div></div>
@@ -66,7 +66,9 @@
       <p class="eyebrow" id="cEyebrow"></p>
       <h2 id="cBig"></h2>
       <p class="lede" id="cLine"></p>
-      <dl class="stats" id="cStats"></dl>
+      <div class="ledger" id="cLedger"></div>
+      <div class="track" id="cTrack"></div>
+      <p class="next" id="cNext"></p>
       <div id="cShards" class="lessons"></div>
       <button id="back" class="btn solid">Next morning</button>
     </div>
@@ -77,8 +79,10 @@
       <p class="eyebrow" id="dKicker"></p>
       <h2 id="dTitle"></h2>
       <p class="lede" id="dText"></p>
-      <dl class="stats" id="dStats"></dl>
-      <div id="dLessons" class="lessons"></div>
+      <div class="cols">
+        <div class="col"><div class="grade" id="dGrade"></div><div class="bars" id="dBars"></div><div id="dLessons" class="lessons"></div></div>
+        <div class="ledger" id="dLedger"></div>
+      </div>
       <button id="again" class="btn solid">Begin again</button>
     </div>
   </section>
@@ -87,6 +91,8 @@
   <p id="err" class="errline" hidden></p>
 </main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
 <script>
 /*JS*/
 </script>

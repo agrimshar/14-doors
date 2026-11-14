@@ -11,7 +11,8 @@ const REDUCE=matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ---------- state ---------- */
 const S={phase:'title',day:0,clock:0,well:1,habit:0,worry:0,joy:0,dayJoy:0,doses:[],dayDoses:0,total:0,taken:{},today:{},done:{},
-  lostToday:0,lost:0,shower:0,talked:false,cool:0,chain:0,stage:0,warned:false,flatSaid:false,blackout:false,order:[],kept:[],goalSaid:false};
+  lostToday:0,lost:0,shower:0,talked:false,cool:0,chain:0,stage:0,warned:false,flatSaid:false,blackout:false,order:[],kept:[],goalSaid:false,
+  perf:0,flowMax:1,worry0:0,streak:0,score:0,ledger:[]};
 const P={x:3.5,z:3,vx:0,vz:0,face:0,r:.35,walk:0};
 const keys={}; const inputQ=[];
 let C=null, G=0, hold=0, near=null, endKind=null, fade=0, fadeTo=null, yaw=3.68, pitch=-.05, locked=false, sky=null, stars=null, bob=0;
@@ -22,7 +23,7 @@ const walls=[], solids=[], gates=[], stations=[], npcs=[], tokens={}, motes=[], 
 const cv=$('#gl');
 let renderer,scene,camera,hemi,sun,rtScene,rtA,rtB,postMat,copyMat,postScene,copyScene,ortho,usePost=true,player,pLight,vTmp;
 let RW=2,RH=2,q=1,slow=0;
-function M(color,o={}){ return new THREE.MeshStandardMaterial({color,roughness:o.rough??.85,metalness:0,emissive:o.em??0x000000,emissiveIntensity:o.ei??1}); }
+function M(color,o={}){ const m=new THREE.MeshStandardMaterial({color,roughness:o.rough??.85,metalness:0,emissive:o.em??0x000000,emissiveIntensity:o.ei??1}); if(o.map){ m.map=o.map; m.bumpMap=o.map; m.bumpScale=o.bs??.012; } return m; }
 function box(w,h,d,x,y,z,color,o={}){
   const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),o.basic?new THREE.MeshBasicMaterial({color}):M(color,o));
   m.position.set(x,y,z); m.castShadow=!o.flat; m.receiveShadow=true; scene.add(m);
@@ -32,7 +33,7 @@ function box(w,h,d,x,y,z,color,o={}){
 function wall(x1,z1,x2,z2){
   const t=.25, hz=Math.abs(z2-z1)<.01;
   const w=hz?x2-x1:t, d=hz?t:z2-z1, cx=(x1+x2)/2, cz=(z1+z2)/2;
-  box(w,2.7,d,cx,1.35,cz,0x4f4488,{rough:.9});
+  box(w,2.7,d,cx,1.35,cz,0x5a4e96,{rough:.9,map:texFit('wall',Math.max(w,d),2.7)});
   box(w+.03,.06,d+.03,cx,2.73,cz,0xf7f0e3,{basic:true,flat:true});
   box(w+.04,.07,d+.04,cx,.035,cz,0xff2e93,{basic:true,flat:true});
   walls.push([cx-w/2,cz-d/2,cx+w/2,cz+d/2]);
@@ -52,19 +53,23 @@ function doorway(x,z,day){
     gates.push({day,mesh:g,box:[x-.8,z-.2,x+.8,z+.2],x,z});
   }
 }
-function figure(col){
-  const g=new THREE.Group();
-  const body=new THREE.Mesh(new THREE.CylinderGeometry(.24,.32,1.05,14),M(hexN(col),{em:hexN(col),ei:.18,rough:.6}));
-  body.position.y=.6; body.castShadow=true; g.add(body);
-  const head=new THREE.Mesh(new THREE.SphereGeometry(.23,18,14),M(0xf7f0e3,{em:0xf7f0e3,ei:.12,rough:.5}));
-  head.position.y=1.42; head.castShadow=true; g.add(head);
-  const nose=new THREE.Mesh(new THREE.BoxGeometry(.1,.08,.14),M(hexN(col),{em:hexN(col),ei:.3}));
-  nose.position.set(0,1.42,.24); g.add(nose);
-  for(const ex of [-.09,.09]){ const e=new THREE.Mesh(new THREE.SphereGeometry(.035,8,6),new THREE.MeshBasicMaterial({color:0x06050c})); e.position.set(ex,1.47,.2); g.add(e); }
-  const mark=new THREE.Mesh(new THREE.OctahedronGeometry(.13),new THREE.MeshBasicMaterial({color:0xff6b5d}));
-  mark.position.y=2.05; mark.visible=false; g.add(mark);
+function figurePose(f,want){
+  if(f.state===want) return; const to=f[want], from=f[f.state]; f.state=want;
+  to.reset().setEffectiveWeight(1).play(); to.crossFadeFrom(from,.3,false);
+}
+function figure(col,model){
+  const g=new THREE.Group(), c=hexN(col), f={g,head:new THREE.Group(),mixer:null,act:null};
+  f.body=prop(model||'person_walk',0,0,Object.assign({size:[null,1.72,null],uniform:true,fb:c,ready:(m,clips)=>{
+    if(!clips||!clips.length) return;
+    // one walk clip from the rig; its passing pose (legs together), held, is the standing pose we crossfade to when the walk stops
+    f.mixer=new THREE.AnimationMixer(m); f.walk=f.mixer.clipAction(clips[0]); f.walk.timeScale=1.05;
+    f.idle=f.mixer.clipAction(THREE.AnimationUtils.subclip(clips[0],'idle',8,9,30)); f.idle.setLoop(THREE.LoopRepeat); f.idle.play(); f.state='idle';
+  }},model?{}:{tint:c,ei:.12}));
+  scene.remove(f.body); g.add(f.body); g.add(f.head);
+  f.mark=new THREE.Mesh(new THREE.OctahedronGeometry(.13),new THREE.MeshBasicMaterial({color:0xff6b5d})); f.mark.position.y=2.05; f.mark.visible=false; g.add(f.mark);
+  const glow=new THREE.PointLight(c,.5,2.5,2); glow.position.y=1.1; g.add(glow);
   scene.add(g);
-  return {g,body,head,mark};
+  return f;
 }
 function ring(x,z,col){
   const m=new THREE.Mesh(new THREE.RingGeometry(.48,.6,32),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.8,side:THREE.DoubleSide,depthWrite:false}));
@@ -74,59 +79,72 @@ function lamp(id,x,z,col){
   const l=new THREE.PointLight(col,1,13,2); l.position.set(x,2.2,z); scene.add(l); lamps[id]=l;
 }
 function buildWorld(){
-  scene=new THREE.Scene(); scene.background=new THREE.Color(0x06050c); scene.fog=new THREE.Fog(0x2a1840,16,70);
+  scene=new THREE.Scene(); scene.background=new THREE.Color(0x06050c); scene.fog=new THREE.Fog(0x2a1840,18,95); mkTextures();
   camera=new THREE.PerspectiveCamera(72,1,.05,260);
   hemi=new THREE.HemisphereLight(0xaab4ff,0x4a3626,.5); scene.add(hemi);
+  scene.environment=mkEnv();
   sun=new THREE.DirectionalLight(0xffe2b8,1); sun.position.set(2,20,4); sun.target.position.set(10,0,11);
   sun.castShadow=true; sun.shadow.mapSize.set(2048,2048);
   const sc=sun.shadow.camera; sc.left=-17; sc.right=17; sc.top=17; sc.bottom=-17; sc.near=1; sc.far=60; sun.shadow.bias=-.0006;
   scene.add(sun); scene.add(sun.target);
   // ground and floors
   box(90,.1,90,10,-.12,11,0x08070f,{flat:true});
-  const floors=[[0,0,7,6,0x302852],[7,0,11,6,0x1e4450],[11,0,20,6,0x47352a],[0,6,20,8.5,0x272238],[0,8.5,12,14,0x3a3222],[12,8.5,20,14,0x2b2734],[0,14,20,22,0x16361f]];
-  for(const [x1,z1,x2,z2,c] of floors) box(x2-x1,.1,z2-z1,(x1+x2)/2,-.05,(z1+z2)/2,c,{flat:true,rough:.95});
+  const floors=[[0,0,7,6,0x5a4e8a,'wood'],[7,0,11,6,0x3a6a78,'tile'],[11,0,20,6,0x7a6050,'tile'],[0,6,20,8.5,0x4a4260,'concrete'],[0,8.5,12,14,0x6a5a3c,'wood'],[12,8.5,20,14,0x4e485c,'concrete'],[0,14,20,22,0x8aa884,'grass']];
+  for(const [x1,z1,x2,z2,c,k] of floors) box(x2-x1,.1,z2-z1,(x1+x2)/2,-.05,(z1+z2)/2,c,{flat:true,rough:.95,map:texFit(k,x2-x1,z2-z1),bs:k==='grass'?.03:.015});
   // walls
   wall(0,0,20,0); wall(0,0,0,14); wall(20,0,20,14); wall(0,14,15.2,14); wall(16.8,14,20,14);
   wall(0,6,4.2,6); wall(5.8,6,8.2,6); wall(9.8,6,14.2,6); wall(15.8,6,20,6);
   wall(0,8.5,5.2,8.5); wall(6.8,8.5,15.2,8.5); wall(16.8,8.5,20,8.5);
   wall(7,0,7,6); wall(11,0,11,6); wall(12,8.5,12,14);
   doorway(5,6); doorway(9,6,1); doorway(15,6); doorway(6,8.5,1); doorway(16,8.5); doorway(16,14,2);
-  // yard fence
+  // yard fence: generated segments on top of the collision line
   for(const [x1,z1,x2,z2] of [[0,22,20,22],[0,14,0,22],[20,14,20,22]]){
-    const hz=Math.abs(z2-z1)<.01, w=hz?x2-x1:.12, d=hz?.12:z2-z1;
-    box(w,.6,d,(x1+x2)/2,.3,(z1+z2)/2,0x24382c); walls.push([(x1+x2)/2-w/2-.1,(z1+z2)/2-d/2-.1,(x1+x2)/2+w/2+.1,(z1+z2)/2+d/2+.1]);
+    const hz=Math.abs(z2-z1)<.01, len=hz?x2-x1:z2-z1, n=Math.round(len/2.5), seg=len/n;
+    for(let i=0;i<n;i++){ const t=(i+.5)*seg; prop('fence',hz?x1+t:x1,hz?z1:z1+t,{size:[seg+.02,.75,.16],ry:hz?0:Math.PI/2,fb:0x24382c}); }
+    const w=hz?x2-x1:.12, d=hz?.12:z2-z1; walls.push([(x1+x2)/2-w/2-.1,(z1+z2)/2-d/2-.1,(x1+x2)/2+w/2+.1,(z1+z2)/2+d/2+.1]);
   }
   // bedroom
-  box(1.6,.45,2.3,1.05,.225,1.45,0x4a3f6b,{solid:true}); box(1.3,.14,.5,1.05,.52,.6,0xd8d0e8);
-  box(1.7,.75,.7,5.8,.375,.55,0x3a2f2a,{solid:true}); box(.7,.45,.06,5.8,1.0,.3,0x8fb8ff,{em:0x5f8fff,ei:.9});
-  box(.26,1.15,.1,.5,.58,4.8,0xb5651d); box(1,.62,.4,3.6,.31,.4,0x35304a,{solid:true}); box(.5,.5,.4,6.5,.25,5.4,0x35304a,{solid:true});
-  box(2.6,.02,1.8,3.6,.012,3.4,0x3a2c55,{flat:true});
+  prop('bed',1.05,1.45,{size:[1.6,.55,2.3],solid:true,fb:0x4a3f6b});
+  prop('desk',5.8,.55,{size:[1.7,.8,.7],ry:0,solid:true,fb:0x3a2f2a});
+  prop('chair',5.8,1.35,{size:[.55,.9,.55],ry:0,solid:.45,fb:0x35304a});
+  prop('guitar',.45,4.8,{size:[null,1.15,null],ry:Math.PI/2,uniform:true,fb:0xb5651d});
+  prop('lamp',6.55,5.45,{size:[.4,1.7,.4],solid:.3,fb:0x35304a});
+  prop('rug',3.6,3.4,{size:[2.6,.03,1.8],flat:true,fb:0x3a2c55});
   // bathroom
-  box(1.5,.08,1.5,7.95,.04,.95,0x7fd0e0,{em:0x2f7f90,ei:.5,flat:true}); box(.5,1.1,3.8,10.6,.55,2.4,0x2f3b4a,{solid:true});
+  prop('shower',7.95,.95,{size:[1.5,2.2,1.5],ry:Math.PI,solid:1.2,fb:0x7fd0e0});
+  box(.5,1.1,3.8,10.6,.55,2.4,0x2f3b4a,{solid:true});
   // kitchen
-  box(8.4,.9,.7,15.6,.45,.5,0x3b3430,{solid:true}); box(1.8,.72,1.1,15.5,.36,3.1,0x5a4636,{solid:true});
-  box(.3,.36,.3,12,1.08,.5,0x16161a);
+  for(const x of [12.8,15.6,18.4]) prop('counter',x,.5,{size:[2.8,.9,.7],ry:0,solid:true,fb:0x3b3430});
+  prop('coffee',12,.5,{size:[.3,.36,.3],y:.9,ry:0,uniform:true,fb:0x16161a});
+  prop('table',15.5,3.1,{size:[1.8,.78,1.1],solid:[1.8,1.1],fb:0x5a4636});
   // hall
-  box(.4,.4,.4,19.4,.2,7.25,0x6b4a35); const leaf=new THREE.Mesh(new THREE.SphereGeometry(.42,12,10),M(0x2f9e5b,{em:0x1a6b3a,ei:.3})); leaf.position.set(19.4,.8,7.25); leaf.castShadow=true; scene.add(leaf);
+  prop('plant',19.4,7.25,{size:[.8,1.4,.8],uniform:true,fb:0x2f9e5b});
   // living room
-  box(3,.6,1,5.5,.3,13.2,0x3d4a63,{solid:true}); box(3,.5,.25,5.5,.75,13.6,0x34405a);
-  box(2.2,1.05,.12,5.5,.8,8.78,0x0d0f18,{em:0x3a66ff,ei:.7}); box(1,1,.6,10.8,.5,13.6,0x4a2f2a,{solid:true});
-  box(2.4,.02,1.6,5.5,.012,11.2,0x4a3a22,{flat:true});
+  prop('sofa',2.6,13.2,{size:[3,.85,1],ry:Math.PI,solid:true,fb:0x3d4a63});
+  prop('tv',2.6,8.8,{size:[2.2,1.1,.14],y:.55,fb:0x0d0f18});
+  prop('speaker',4.3,9,{size:[.6,1.5,.5],solid:.5,fb:0x16161a}); prop('speaker',.9,9,{size:[.6,1.5,.5],solid:.5,fb:0x16161a});
+  prop('armchair',10.8,13.6,{size:[1,.9,1],ry:-Math.PI/2,solid:true,fb:0x4a2f2a});
+  prop('lamp',.7,13.3,{size:[.4,1.7,.4],solid:.3,fb:0x35304a});
+  prop('rug',2.6,11.2,{size:[2.4,.03,1.6],flat:true,fb:0x4a3a22});
   // entry
-  box(1.4,.02,.8,16,.012,13.2,0x3a3344,{flat:true});
+  prop('rug',16,13.2,{size:[1.4,.03,.8],flat:true,fb:0x3a3344}); prop('lamp',19.3,13.3,{size:[.4,1.7,.4],solid:.3,fb:0x35304a});
   // yard
-  const pole=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,3,8),M(0x999999)); pole.position.set(2.4,1.5,18); pole.castShadow=true; scene.add(pole);
-  box(.1,.8,1.2,2.55,2.7,18,0xf7f0e3,{em:0xf7f0e3,ei:.25}); const hoop=new THREE.Mesh(new THREE.TorusGeometry(.25,.03,8,16),M(0xff6a1a,{em:0xff6a1a,ei:.6})); hoop.rotation.x=Math.PI/2; hoop.position.set(2.9,2.45,18); scene.add(hoop);
-  box(8.4,.7,.9,15.1,.35,21.3,0x4a3b2a,{solid:true});
+  prop('hoop',2.7,18,{size:[1.2,3.1,.7],ry:Math.PI/2,solid:.3,fb:0x999999});
+  prop('bench',13.6,21.3,{size:[2.4,.8,.8],solid:true,fb:0x4a3b2a}); prop('bench',16.6,21.3,{size:[2.4,.8,.8],solid:true,fb:0x4a3b2a});
+  prop('speaker',9.7,21.2,{size:[.9,2.1,.7],ry:Math.PI,solid:true,fb:0x16161a}); prop('speaker',1.2,21.2,{size:[.9,2.1,.7],ry:Math.PI,solid:true,fb:0x16161a});
   // lamps
   lamp('bed',3.5,3,0xff7ad9); lamp('bath',9,3,0x5fe8ff); lamp('kit',15.5,3,0xffb46a); lamp('hall',10,7.25,0xb9a0ff); lamp('liv',6,11.2,0xffc94d); lamp('yard',10,18,0x4ad6c0); lamp('ent',16,11,0xff8a6a);
   // the fourteen doors, small enough to hold
   for(const s of SUBS){
-    const g=new THREE.Group();
-    const geo=new THREE.ExtrudeGeometry(archShape(.44,.7),{depth:.09,bevelEnabled:false}); geo.translate(0,-.35,-.045);
-    const m=new THREE.Mesh(geo,M(hexN(s.a),{em:hexN(s.a),ei:1.1,rough:.4})); g.add(m);
+    const g=new THREE.Group(), col=hexN(s.a);
+    const m=new THREE.Group(); g.add(m);
+    const core=new THREE.Mesh(new THREE.OctahedronGeometry(.2,0),new THREE.MeshStandardMaterial({color:col,emissive:col,emissiveIntensity:1.5,roughness:.25,metalness:.1}));
+    const shell=new THREE.Mesh(new THREE.IcosahedronGeometry(.33,1),new THREE.MeshPhysicalMaterial({color:hexN(s.b),transparent:true,opacity:.3,roughness:.08,metalness:0,transmission:.5,side:THREE.DoubleSide,depthWrite:false}));
+    m.add(core); m.add(shell);
+    const plinth=new THREE.Mesh(new THREE.CylinderGeometry(.26,.32,.1,24),M(0x14121f,{em:col,ei:.3})); plinth.position.y=-1.25; g.add(plinth);
     const halo=new THREE.Mesh(new THREE.RingGeometry(.3,.36,24),new THREE.MeshBasicMaterial({color:hexN(s.b),transparent:true,opacity:.7,side:THREE.DoubleSide,depthWrite:false}));
-    halo.rotation.x=-Math.PI/2; halo.position.y=-1.2; g.add(halo);
+    halo.rotation.x=-Math.PI/2; halo.position.y=-1.19; g.add(halo);
+    const pl=new THREE.PointLight(col,.9,3.2,2); pl.position.y=-.1; g.add(pl);
     g.position.set(s.x.pos[0],1.3,s.x.pos[1]); scene.add(g);
     tokens[s.id]={g,m,s};
     stations.push({type:'sub',s,x:s.x.pos[0],z:s.x.pos[1],day:s.x.day,reach:1.7});
@@ -137,14 +155,15 @@ function buildWorld(){
   sky=new THREE.Mesh(new THREE.SphereGeometry(110,24,16),new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,fog:false,
     uniforms:{top:{value:new THREE.Color(0x0b0830)},mid:{value:new THREE.Color(0x7a2f8f)},bot:{value:new THREE.Color(0xff8a6a)}},
     vertexShader:'varying vec3 vP; void main(){ vP=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }',
-    fragmentShader:'uniform vec3 top; uniform vec3 mid; uniform vec3 bot; varying vec3 vP; void main(){ float h=normalize(vP).y; vec3 c=mix(bot,mid,smoothstep(-.02,.22,h)); c=mix(c,top,smoothstep(.15,.75,h)); gl_FragColor=vec4(c,1.); }'}));
+    fragmentShader:'uniform vec3 top; uniform vec3 mid; uniform vec3 bot; varying vec3 vP; float hs(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); } void main(){ vec3 n=normalize(vP); float h=n.y; vec3 c=mix(bot,mid,smoothstep(-.02,.22,h)); c=mix(c,top,smoothstep(.15,.75,h)); c+=bot*.55*exp(-abs(h-.01)*22.); float a=atan(n.z,n.x); vec2 g=vec2(a*22.,h*60.); float cl=hs(floor(g*.5)); c+=mid*.18*smoothstep(.55,1.,cl)*smoothstep(.05,.3,h)*(1.-smoothstep(.3,.7,h)); gl_FragColor=vec4(c,1.); }'}));
   sky.position.set(10,0,11); scene.add(sky);
+  addSkyline(); addGrass(); addDecor();
   const sp=new Float32Array(900); for(let i=0;i<300;i++){ const a=R(TAU), e=R(.12,1.5), r=100; sp[i*3]=10+Math.cos(a)*Math.cos(e)*r; sp[i*3+1]=Math.sin(e)*r; sp[i*3+2]=11+Math.sin(a)*Math.cos(e)*r; }
   const sg=new THREE.BufferGeometry(); sg.setAttribute('position',new THREE.BufferAttribute(sp,3));
   stars=new THREE.Points(sg,new THREE.PointsMaterial({color:0xffffff,size:2,sizeAttenuation:false,transparent:true,opacity:.8,fog:false,depthWrite:false})); scene.add(stars);
   // people
   for(const d of NPCS){
-    const f=figure(d.col), el=document.createElement('div'); el.className='bubble'; $('#bubbles').appendChild(el);
+    const f=figure(d.col,d.id+'_walk'), el=document.createElement('div'); el.className='bubble'; $('#bubbles').appendChild(el);
     npcs.push({d,f,el,x:d.path[0][0],z:d.path[0][1],i:0,wait:1,face:0,sayT:0,cool:R(2,6),knock:null,sees:false});
   }
   player=figure('#f7f0e3');
@@ -228,21 +247,22 @@ const tells=()=>load()*(S.shower>0?.5:1);
 const stage=()=>S.worry>=66?2:S.worry>=33?1:0;
 const STAGES=['They do not know','They have noticed','They are worried'];
 function dominant(){ let b=null,bv=0; for(const d of S.doses){ const v=d.load*clamp(1-d.t/d.dur); if(v>bv){ bv=v; b=d; } } return b; }
-function addJoy(v){ S.joy=Math.max(0,S.joy+v); S.dayJoy+=v; if(v>0) popGain(v); }
+function addJoy(v){ S.joy=Math.max(0,S.joy+v); S.dayJoy+=v; if(v>0){ popGain(v); S.idle=0; } }
+function doseJoy(s){ const n=S.today[s.id]||0, tot=S.taken[s.id]||0, dom=dominant(), combo=dom&&dom.s!==s?comboOf(dom.s,s):null; return s.x.joy*Math.pow(.6,n)*Math.pow(.88,tot)*(combo?combo.yield:1)*(S.well<.2?.4:1); }
 function takeDose(s,forced){
   const n=S.today[s.id]||0, tot=S.taken[s.id]||0, dom=dominant();
   const combo=dom&&dom.s!==s?comboOf(dom.s,s):null;
-  const j=s.x.joy*Math.pow(.6,n)*Math.pow(.88,tot)*(combo?combo.yield:1)*(S.well<.2?.4:1);
+  const j=doseJoy(s);
   S.today[s.id]=n+1; S.taken[s.id]=tot+1; S.dayDoses++; S.total++; if(!S.order.includes(s.id)) S.order.push(s.id);
   S.doses.push({s,t:0,dur:s.x.dur,load:s.x.load*(combo?Math.min(1.6,combo.cost):1),motes:Math.round(j*.6),spawn:0});
   addJoy(j*.4);
   S.well=clamp(S.well-s.cost*.5*(combo?combo.cost:1)); S.habit=clamp(S.habit+s.x.hab*(1+n*.5));
-  sWhoosh(); sBoom(); V.flash=.25; musicFor();
+  sWhoosh(); sBoom(); sndFx('door',.9); V.flash=.25; musicFor();
   if(forced) caption(STORY.compulse,4);
   else if(combo) caption(combo.name+'. '+combo.line,6);
   else caption(n?STORY.again:(tot?s.lines[1]:s.lines[0]),5);
   const seer=visibleNpc(7);
-  if(seer&&s.x.load>=.3){ S.worry+=18; say(seer,pick(SAY.caught),3.5); }
+  if(seer&&s.x.load>=.3){ S.worry+=18; say(seer,pick(SAY.caught),3.5); breakFlow(); }
   if(combo&&combo.black) startLoss('blackout');
 }
 let musId='';
@@ -254,7 +274,7 @@ function musicFor(){
 /* ---------- losing control ---------- */
 function startLoss(type,target){
   if(C&&C.type==='blackout') return;
-  C={type,target,t:0,hit:false}; S.lostToday++; S.lost++; hold=0;
+  C={type,target,t:0,hit:false}; S.lostToday++; S.lost++; hold=0; cancelCheck(); breakFlow();
   $('#lost').classList.add('on'); sBlack();
   if(type==='blackout'){ caption(S.well<=0?STORY.dry:STORY.blackout,6); fadeTo=()=>endDay(true); }
   else caption(STORY[type],5);
@@ -268,7 +288,7 @@ function checkLoss(){
   if(S.well<=0){ startLoss('blackout'); return; }
   const L=load(), lim=limit();
   $('#hEdge').classList.toggle('on',L>lim*.85&&!C);
-  if(L>lim*.85&&!S.warned){ S.warned=true; caption(STORY.limit,4); }
+  if(L>lim*.85&&!S.warned){ S.warned=true; caption(STORY.limit,4); sndFx('heart',.8); }
   if(L<=lim||S.cool>0) return;
   const d=dominant(); if(!d) return; const s=d.s;
   if(s.id==='al'){ const n=visibleNpc(4.5); if(n) startLoss('lash',n); return; }
@@ -309,7 +329,7 @@ function autopilot(dt){
 }
 
 /* ---------- people ---------- */
-function say(n,text,dur=3){ n.el.textContent=text; n.el.classList.add('on'); n.sayT=dur; n.cool=dur+R(7,12); }
+function say(n,text,dur=3){ sndSay(n.d.id,text); if(SAY.caught.includes(text)||SAY.found.includes(text)) sndFx('caught',.7); n.el.textContent=text; n.el.classList.add('on'); n.sayT=dur; n.cool=dur+R(7,12); }
 function updNpc(n,dt){
   const act=S.day>=n.d.day; n.f.g.visible=act; if(!act){ n.el.classList.remove('on'); return; }
   const path=(stage()===2&&n.d.worried)?n.d.worried:n.d.path;
@@ -318,21 +338,30 @@ function updNpc(n,dt){
   else {
     const w=path[n.i%path.length], dx=w[0]-n.x, dz=w[1]-n.z, d=Math.hypot(dx,dz);
     if(d<.12){ n.wait=w[2]; n.i=(n.i+1)%path.length; }
-    else { const sp=1.35; n.x+=dx/d*Math.min(d,sp*dt); n.z+=dz/d*Math.min(d,sp*dt); n.face=Math.atan2(dx,dz); }
+    else { const sp=1.35; n.x+=dx/d*Math.min(d,sp*dt); n.z+=dz/d*Math.min(d,sp*dt); n.face=Math.atan2(dx,dz); n.moving=true; }
   }
   const d=dist(n,P); n.sees=d<6.5&&los(n.x,n.z,P.x,P.z);
   if(n.sees&&(n.wait>0||stage()>0)) n.face=Math.atan2(P.x-n.x,P.z-n.z);
-  n.cool-=dt;
+  n.cool-=dt; if(n.quiz>0) n.quiz-=dt;
   if(n.sees&&S.phase==='play'&&!C){
     const tl=tells();
-    if(tl>.2){ S.worry+=tl*7*dt; if(n.cool<=0) say(n,pick(SAY.seen),3); }
+    if(tl>.2){ S.worry+=tl*2.5*dt; if(n.cool<=0&&!K.on&&d<5.5&&(n.quiz||0)<=0) actNormal(n,tl); }
     else if(S.well<.2){ S.worry+=1.5*dt; if(n.cool<=0) say(n,'You look awful. Are you eating?',3); }
     else if(n.cool<=0&&d<3.2) say(n,stage()===2?pick(SAY.worried):pick(SAY.calm[n.d.id]),3);
   }
   if(n.sayT>0){ n.sayT-=dt; if(n.sayT<=0) n.el.classList.remove('on'); }
-  n.f.g.position.set(n.x,Math.abs(Math.sin(G*6+n.x))*(n.wait>0?0:.04),n.z); n.f.g.rotation.y=n.face;
+  n.f.g.position.set(n.x,0,n.z); n.f.g.rotation.y=n.face;
+  if(n.f.mixer){ figurePose(n.f,n.moving?'walk':'idle'); n.f.mixer.update(dt); } n.moving=false;
   n.f.mark.visible=stage()===2; n.f.mark.rotation.y=G*2;
   if(n.el.classList.contains('on')) place(n.el,n.x,2.3,n.z);
+}
+function actNormal(n,tl){
+  // they stop you with a question; the more in your blood, the faster and narrower the answer has to be
+  say(n,pick(SAY.seen),4); n.quiz=26; n.wait=Math.max(n.wait,7); n.face=Math.atan2(P.x-n.x,P.z-n.z);
+  startCheck({kind:'act',label:'Act normal · '+n.d.name,hint:'Press E in the light, twice',speed:.9+tl*1.4,width:.2*(1-tl*.55),need:2,onEnd:avg=>{
+    if(avg>=.5){ S.worry=Math.max(0,S.worry-9); say(n,pick(SAY.calm[n.d.id]),3); caption(avg>=.99?'Steady. They bought it.':'I held it together. Just.',3.5); }
+    else { S.worry+=15+tl*22; say(n,pick(SAY.caught),3.5); caption('My face gave it away.',3.5); breakFlow(); V.red=.5; }
+  }});
 }
 function place(el,x,y,z){
   vTmp.set(x,y,z).project(camera);
@@ -355,14 +384,24 @@ function taskMult(t){
   if(S.well<.2) m*=.5;
   return {m,slow};
 }
-function doTask(t){
-  const {m}=taskMult(t); S.done[t.id]=true; addJoy(t.joy*m);
+const flowMult=()=>1+2*(S.flow||0);
+function breakFlow(){ if((S.flow||0)>.3) caption(STORY.snap,3.5); S.flow=0; S.flowT=0; }
+function bloom(room,v){ const l=lamps[room]; if(l) l.userData.bloom=Math.max(l.userData.bloom||0,v); }
+function bloomAll(v){ for(const k in lamps) bloom(k,v); }
+function startTask(t){
+  const sp={focus:.9,play:1.15,bond:.8,care:.7}[t.kind]||1;
+  startCheck({label:t.name,speed:sp*(t.id==='hoops'?1.3:1),width:.2,need:3,onEnd:(avg,h)=>doTask(t,avg,h)});
+}
+function doTask(t,avg=.6,hits=[]){
+  const {m}=taskMult(t), skill=.5+1.5*avg, fm=flowMult(); S.done[t.id]=true; addJoy(t.joy*m*skill*fm); S.perf+=hits.filter(h=>h>=1).length;
+  if(avg>=.5){ const was=S.flow||0; S.flow=clamp(was+.34); S.flowT=22; S.flowMax=Math.max(S.flowMax,flowMult()); if(was<.6&&S.flow>=.6) setTimeout(()=>caption(STORY.flow,4),2800); } else S.flowT=Math.min(S.flowT||0,5);
+  bloom(t.room,.5+avg*1.2); V.flash=.08+.3*avg;
   if(t.well) S.well=clamp(S.well+t.well);
   if(t.id==='shower') S.shower=30;
   if(t.kind==='bond'){ if(tells()>.35){ S.worry+=10; caption('They looked at me a second too long.',4); } else { if(load()<.1) S.worry=Math.max(0,S.worry-8); caption(t.line,4.5); } }
-  else caption(t.line,4.5);
+  else caption((avg>=.99?'Perfect. ':avg<.34?'Sloppy. ':'')+t.line,4.5);
   t.ring.material.opacity=.15; if(lamps[t.room]) lamps[t.room].userData.lit=true;
-  sShard(); V.flash=.12; hudTasks();
+  sShard(); sndFx(avg>=.99?'shard':'task',.8); hudTasks();
 }
 function talk(){ S.talked=true; S.worry=Math.max(0,S.worry-30); S.habit=clamp(S.habit-.08); addJoy(5); caption(STORY.talk,6); sShard(); const m=npcs[0]; say(m,'Thank you for telling me.',4); }
 function findNear(){
@@ -377,14 +416,14 @@ function findNear(){
   return best;
 }
 function promptFor(st){
-  if(st.type==='sub') return {text:st.s.name,time:.7};
-  if(st.type==='task'){ const k=taskMult(st.t); return {text:st.t.name,time:1.8*k.slow}; }
+  if(st.type==='sub') return {text:st.s.name+' · +'+Math.round(doseJoy(st.s))+' joy',time:.7};
+  if(st.type==='task'){ const k=taskMult(st.t), fm=flowMult(); return {text:st.t.name+' · +'+Math.round(st.t.joy*k.m*.5*fm)+'–'+Math.round(st.t.joy*k.m*2*fm)+' joy',time:.6}; }
   if(st.type==='bed') return {text:'Sleep, and end '+DAYS[S.day],time:1.4};
   return {text:'Tell her the truth',time:2};
 }
 function act(st){
   if(st.type==='sub') takeDose(st.s);
-  else if(st.type==='task') doTask(st.t);
+  else if(st.type==='task') startTask(st.t);
   else if(st.type==='bed') endDay(false);
   else talk();
 }
@@ -403,6 +442,7 @@ function target(){
 
 /* ---------- a day ---------- */
 function startDay(d){
+  S.idle=0; S.idleSaid=false; S.itchSaid=false; S.flow=0; S.flowT=0; S.perf=0; S.flowMax=1; S.worry0=S.worry; cancelCheck();
   Object.assign(S,{day:d,clock:0,doses:[],today:{},done:{},dayJoy:0,dayDoses:0,lostToday:0,talked:false,shower:0,chain:0,cool:0,warned:false,goalSaid:false});
   const bo=S.blackout; S.blackout=false;
   P.x=bo?(d>=1?9:9):2.4; P.z=bo?(d>=1?4.2:7.2):1.6; P.vx=P.vz=0; C=null; fade=1; fadeTo=null; inputQ.length=0; yaw=bo?R(TAU):3.68; pitch=-.05;
@@ -419,6 +459,7 @@ function startDay(d){
   setTimeout(()=>caption(d===0?STORY.open:STORY.days[d],6),900);
 }
 function endDay(blackout){
+  cancelCheck();
   if(S.phase!=='play') return;
   const avail=TASKS.filter(t=>S.day>=t.day), done=avail.filter(t=>S.done[t.id]).length;
   const met=S.dayJoy>=goalNow(); S.kept[S.day]=met;
@@ -434,27 +475,70 @@ function endDay(blackout){
   else if(S.dayDoses>0){ v='Loud.'; line=STORY.dayLoud; }
   else { v='Grey.'; line=STORY.dayGrey; }
   $('#cEyebrow').textContent=DAYS[S.day]+' night';
-  $('#cBig').textContent=v; $('#cLine').textContent=line;
-  const dh=Math.round((S.habit-hab0)*100);
-  $('#cStats').innerHTML=`<dt>Today's goal</dt><dd>${met?'Kept':'Missed'} · ${Math.round(S.dayJoy)} of ${goalNow()} joy${bonus?` · in-control bonus +${bonus}`:''}</dd><dt>Day to day</dt><dd>${done} of ${avail.length} done</dd><dt>Doors opened</dt><dd>${S.dayDoses}</dd><dt>The habit</dt><dd>${Math.round(S.habit*100)}%${dh<0?' · easing':''}</dd><dt>At home</dt><dd>${STAGES[stage()]}</dd>`;
+  $('#cBig').textContent=v; $('#cLine').textContent=line; sndFx('sleep',.8); setTimeout(()=>sndStory(line),900);
+  const L=dayLedger(met,bonus); S.ledger[S.day]=L; S.score+=L.score;
+  $('#cLedger').innerHTML=ledgerHTML(L.rows,'Day score',L.score);
+  $('#cTrack').innerHTML=DAYS.map((d,i)=>`<span class="${i===S.day?(met?'kept':'miss'):i<S.day?(S.kept[i]?'kept':'miss'):''}"><i></i>${d.slice(0,3)}</span>`).join('');
+  $('#cNext').innerHTML=S.day<DAYS.length-1?tomorrowLine(S.day+1):`Monday is coming. <b>${S.score}</b> so far.`;
   $('#cShards').innerHTML=balanced?`<div class="lesson" style="--c:#ffb46a"><i></i><span><small>Balance</small>Goal kept and never out of control. A quarter again on the day.</span></div>`:(S.dayDoses===0?`<div class="lesson" style="--c:#f7f0e3"><i></i><span><small>A clear day</small>The habit eased and the house relaxed.</span></div>`:'');
   $('#back').textContent=S.day>=DAYS.length-1?'See where it left me':'Next morning';
   S.well=clamp((blackout||S.clock>=DAYLEN?.6:1)-.35*S.habit,.2,1);
   S.doses=[]; setMusic(HUB_MUS); musId='hub'; S.phase='card'; show('card');
 }
+function dayLedger(met,bonus){
+  const kept=met, streak=kept?(S.streak||0)+1:0; S.streak=streak;
+  const mul=kept?[1,1.5,2,2][Math.min(streak,3)-1]:1, joy=Math.round(S.dayJoy)+bonus;
+  const perf=S.perf, fm=S.flowMax, worryUp=Math.max(0,Math.round(S.worry-S.worry0));
+  const rows=[['Joy earned','+'+joy,'plus']];
+  if(kept) rows.push([streak>1?`Kept · ${streak} in a row`:'Goal kept',`×${mul}`,'plus']); else rows.push(['Goal missed','×1','minus']);
+  const skill=perf*2+Math.round((fm-1)*6); if(skill) rows.push([`${perf} perfect · flow ×${fm.toFixed(1)}`,'+'+skill,'plus']);
+  const cost=S.dayDoses*3+S.lostToday*15+Math.round(worryUp*.5);
+  if(S.dayDoses) rows.push([`${S.dayDoses} door${S.dayDoses>1?'s':''} opened`,'−'+S.dayDoses*3,'minus']);
+  if(S.lostToday) rows.push(['Lost control','−'+S.lostToday*15,'minus']);
+  if(worryUp>=2) rows.push(['Suspicion raised','−'+Math.round(worryUp*.5),'minus']);
+  return {score:Math.max(0,Math.round(joy*mul)+skill-cost),rows,perf,flowMax:fm,kept};
+}
+function countUp(el,to,ms){ const t0=performance.now(); (function f(){ const k=Math.min(1,(performance.now()-t0)/ms); el.textContent=Math.round(to*(1-Math.pow(1-k,3))); if(k<1) requestAnimationFrame(f); })(); }
+function ledgerHTML(rows,totalLabel,total){
+  if(totalLabel) setTimeout(()=>{ const b=document.querySelector('.scr.on .ledger .row.total b'); if(b) countUp(b,total,1100); },300+rows.length*220);
+  return rows.map((r,i)=>`<div class="row ${r[2]||''}" style="--i:${i}"><span>${r[0]}</span><b>${r[1]}</b></div>`).join('')+(totalLabel?`<div class="row total" style="--i:${rows.length}"><span>${totalLabel}</span><b>${total}</b></div>`:'');
+}
+function tomorrowLine(d){
+  const home=NPCS.filter(n=>n.day===d).map(n=>n.name), doors=SUBS.filter(s=>s.x.day===d).length, tasks=TASKS.filter(t=>t.day===d).length;
+  return `Tomorrow is <b>${DAYS[d]}</b>. The goal is <b>${GOALS[d]}</b>.${home.length?` ${home.join(' and ')} ${home.length>1?'are':'is'} home.`:''}${tasks?` ${tasks} new thing${tasks>1?'s':''} to do.`:''}${doors?` ${doors} more door${doors>1?'s':''}.`:''}`;
+}
+const PAR=GOALS.reduce((a,b)=>a+b,0)*2.5;   // every goal met at a x2 streak with some skill: an A
+function gradeOf(t){ return t>=PAR*1.45?'S':t>=PAR?'A':t>=PAR*.65?'B':t>=PAR*.35?'C':'D'; }
+function bestRun(){ try{ return JSON.parse(localStorage.getItem('fd3.best')||'null'); }catch(err){ return null; } }
+function showBest(){ const b=bestRun(), el=$('#tBest'); el.hidden=!b; if(b) el.innerHTML=`Personal best <b>${b.score}</b> · ${b.grade} · ${ENDINGS[b.kind]?ENDINGS[b.kind].h:''}`; }
 function finish(kind){
   const kept=S.kept.filter(Boolean).length;
   endKind=kind||(S.total===0&&kept>=3?'clear':(kept>=3&&S.worry<50&&S.habit<.5?'level':(S.habit>=.5?'hooked':(S.worry>=66?'known':'grey'))));
   const e=ENDINGS[endKind], good=endKind==='level'||endKind==='clear';
   $('#dKicker').textContent=good?'Monday morning':'Afterwards';
   $('#dTitle').textContent=e.h; $('#dText').textContent=e.t;
-  $('#dStats').innerHTML=`<dt>Days kept</dt><dd>${S.kept.filter(Boolean).length} of ${DAYS.length}</dd><dt>Joy</dt><dd>${Math.round(S.joy)}</dd><dt>Doors opened</dt><dd>${S.total} · ${S.order.length} of 14 kinds</dd><dt>The habit</dt><dd>${Math.round(S.habit*100)}%</dd><dt>Times I lost control</dt><dd>${S.lost}</dd>`;
+  if(kind&&S.phase==='play'){ const L=dayLedger(S.dayJoy>=goalNow(),0); S.ledger[S.day]=L; S.score+=L.score; }   // the day it ended early still counts
+  const endMul={clear:1.3,level:1.15,grey:1,known:.7,hooked:.7}[endKind], total=Math.round(S.score*endMul), g=gradeOf(total), best=bestRun(), isBest=!best||total>best.score;
+  if(isBest){ try{ localStorage.setItem('fd3.best',JSON.stringify({score:total,grade:g,kind:endKind})); }catch(err){} }
+  $('#dGrade').innerHTML=`<div class="g ${good?'':'bad'}">${g}</div><div class="n"><b>${total}</b><small>${ENDINGS[endKind].h.replace(/\.$/,'')} · ×${endMul} ending</small><small class="${isBest?'new':''}">${isBest?'New personal best':'Best '+best.score+' · '+best.grade}</small></div>`;
+  const mx=Math.max(1,...S.ledger.map(l=>l?l.score:0));
+  $('#dBars').innerHTML=DAYS.map((d,i)=>{ const l=S.ledger[i]; return `<span class="${l?(S.kept[i]?'kept':'miss'):''}" style="--i:${i};--h:${l?Math.max(4,Math.round(l.score/mx*100)):0}%"><i></i>${d.slice(0,3)}${l?'<em>'+l.score+'</em>':''}</span>`; }).join('');
+  const bestDay=S.ledger.reduce((a,l,i)=>l&&(!a||l.score>a.l.score)?{l,i}:a,null), peak=S.ledger.reduce((a,l)=>Math.max(a,l?l.flowMax:1),1), perfs=S.ledger.reduce((a,l)=>a+(l?l.perf:0),0);
+  $('#dLedger').innerHTML=ledgerHTML([
+    ['Best day',bestDay?`${DAYS[bestDay.i]} · ${bestDay.l.score}`:'—'],
+    ['Peak flow','×'+peak.toFixed(1)],
+    ['Perfect hits',perfs,'plus'],
+    ['Days kept',`${kept} of ${DAYS.length}`,kept>=3?'plus':'minus'],
+    ['Doors opened',`${S.total} · ${S.order.length} of 14 kinds`,S.total?'minus':'plus'],
+    ['The habit',Math.round(S.habit*100)+'%',S.habit>.3?'minus':''],
+    ['At home',STAGES[stage()],stage()?'minus':''],
+    ['Lost control',S.lost+(S.lost===1?' time':' times'),S.lost?'minus':'']]);
   $('#dLessons').innerHTML=S.order.slice(0,5).map(id=>{ const s=SUB[id]; return `<div class="lesson" style="--c:${s.a}"><i></i><span><small>${s.name}</small>${s.lesson}</span></div>`; }).join('');
   const arr=postMat.uniforms.uShard.value, cols=S.order.slice(0,5).map(id=>SUB[id].a); if(!cols.length) cols.push('#ffb46a','#ff6a8a','#b9b4ff');
   cols.forEach((c,i)=>arr.set(hex3(c),i*3)); postMat.uniforms.uShardN.value=cols.length;
   S.doses=[]; C=null; $('#lost').classList.remove('on'); V.dawn=0; S.endT=0;
   if(good){ setMusic(DAWN_MUS); sFinal(); } else { setMusic(HUB_MUS); sDown(); }
-  S.phase='end'; show('dawn'); $('#dEnd').classList.add('on');
+  S.phase='end'; show('dawn'); $('#dEnd').classList.add('on'); setTimeout(()=>sndMe('end'+endKind[0].toUpperCase()+endKind.slice(1)),1200);
 }
 
 /* ---------- hud ---------- */
@@ -462,7 +546,7 @@ function hudTasks(){
   $('#hTasks').innerHTML=TASKS.filter(t=>S.day>=t.day).map(t=>`<li class="${S.done[t.id]?'done':''}"><i></i>${t.name}</li>`).join('');
 }
 let capTimer=0;
-function caption(txt,dur=5){ const el=$('#tCap'); el.textContent=txt; el.classList.add('on'); clearTimeout(capTimer); capTimer=setTimeout(()=>el.classList.remove('on'),dur*1000); }
+function caption(txt,dur=5){ sndStory(txt); const el=$('#tCap'); el.textContent=txt; el.classList.add('on'); clearTimeout(capTimer); capTimer=setTimeout(()=>el.classList.remove('on'),dur*1000); }
 let gainT=0;
 function popGain(v){ const now=performance.now(); if(now-gainT<120) return; gainT=now; const el=$('#tGain'); el.textContent='+'+(Math.round(v*10)/10); el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
 function hud(){
@@ -472,7 +556,7 @@ function hud(){
   const g=goalNow(), met=S.dayJoy>=g;
   $('#hJoy').textContent=Math.round(S.dayJoy); $('#hGoal').textContent='/ '+g;
   $('#oBar').style.transform=`scaleX(${clamp(S.dayJoy/g)})`; $('#obj').classList.toggle('met',met);
-  if(met&&!S.goalSaid){ S.goalSaid=true; caption(STORY.goal,5); sShard(); S.bed.ring.material.color.setHex(0xffb46a); }
+  if(met&&!S.goalSaid){ S.goalSaid=true; caption(STORY.goal,5); sShard(); sndFx('shard',.9); bloomAll(1.6); V.flash=.4; S.bed.ring.material.color.setHex(0xffb46a); }
   $('#oText').textContent=met?'Goal kept. Get to bed before midnight, or stay up for more.':`Reach ${g} joy, then sleep before midnight.`;
   const tg=target(), dx=tg.x-P.x, dz=tg.z-P.z, dd=Math.hypot(dx,dz);
   let a=Math.atan2(-dx,-dz)-yaw; a=Math.atan2(Math.sin(a),Math.cos(a));
@@ -485,6 +569,7 @@ function hud(){
   $('#mLim').style.left=(lim/1.4*100)+'%';
   $('#mHab').style.transform=`scaleX(${clamp(S.habit)})`; $('#mHab').classList.toggle('hot',S.habit>.5);
   $('#mHome').style.transform=`scaleX(${clamp(S.worry/100)})`; $('#mHome').classList.toggle('hot',S.worry>=66);
+  const fm=flowMult(), fe=$('#hFlow'); fe.textContent='×'+fm.toFixed(1)+' flow'; fe.classList.toggle('on',(S.flow||0)>.03); fe.classList.toggle('hot',fm>=2.3);
   const pr=$('#prompt');
   if(near&&!C){ const p=promptFor(near); pr.classList.add('on'); $('#pText').textContent='Hold E · '+p.text; $('#pFill').style.transform=`scaleX(${clamp(hold)})`; }
   else pr.classList.remove('on');
@@ -497,6 +582,9 @@ function updPlay(dt){
   S.doses=S.doses.filter(d=>d.t<d.dur);
   if(!S.doses.length) S.chain=0;
   musicFor();
+  // standing still is not free: the well drains, faster the longer it goes and the deeper the habit
+  S.idle=(S.idle||0)+dt;
+  if(S.idle>18&&!C){ const k=1+(S.idle-18)/30; S.well=clamp(S.well-dt*.006*k*(1+S.habit*2)); if(!S.idleSaid){ S.idleSaid=true; caption(STORY.idle,4); } if(S.idle>45&&!S.itchSaid){ S.itchSaid=true; caption(STORY.itch,4); sndFx('heart',.6); } }
   // what the body will do
   let spd=1, acc=12, sway=0, lag=0;
   for(const d of S.doses){ const k=doseK(d), x=d.s.x; spd*=lerp(1,x.spd,k); acc=Math.min(acc,lerp(12,x.acc||12,k)); if(x.acc>12) acc=lerp(acc,x.acc,k); sway=Math.max(sway,(x.sway||0)*k); lag=Math.max(lag,(x.lag||0)*k); }
@@ -505,8 +593,10 @@ function updPlay(dt){
   if(over) sway=Math.max(sway,.6);
   if(C){ autopilot(dt); if(C&&C.type!=='blackout'&&C.type!=='scramble'&&Math.hypot(P.vx,P.vz)>.5){ let a=Math.atan2(-P.vx,-P.vz)-yaw; a=Math.atan2(Math.sin(a),Math.cos(a)); yaw+=a*Math.min(1,6*dt); } }
   else { yaw+=((keys.ArrowLeft?1:0)-(keys.ArrowRight?1:0))*2.3*dt; if(sway>0) yaw+=Math.sin(G*1.1)*.35*sway*dt; }
+  if(S.flowT>0) S.flowT-=dt; else if(S.flow>0) S.flow=clamp(S.flow-dt/14);
+  updCheck(dt); if(S.phase!=='play') return;
   if(!C&&S.phase==='play'){
-    let i=inputDir();
+    let i=K.on?{x:0,z:0}:inputDir();
     if(lag>.05){ inputQ.push({t:G,x:i.x,z:i.z}); while(inputQ.length>1&&inputQ[1].t<G-lag) inputQ.shift(); i=inputQ[0]; } else inputQ.length=0;
     let tx=i.x, tz=i.z;
     if(sway>0){ const m=Math.hypot(tx,tz); tx+=Math.sin(G*1.7)*.7*sway*(m>0?1:.25); tz+=Math.cos(G*1.3)*.5*sway*(m>0?1:.25); }
@@ -520,7 +610,7 @@ function updPlay(dt){
   // interaction
   for(const t of TASKS) if(S.done[t.id]) t.beam.visible=false;
   S.bed.beam.visible=S.dayJoy>=goalNow();
-  near=C?null:findNear();
+  near=C||K.on?null:findNear();
   if(near&&(keys.KeyE||keys.Space)){ hold+=dt/promptFor(near).time; if(hold>=1){ hold=0; keys.KeyE=keys.Space=false; act(near); } } else hold=Math.max(0,hold-dt*2);
   if(S.phase!=='play') return;
   // lights that only show when something is in your blood
@@ -574,12 +664,14 @@ function updScene(dt){
   sun.intensity=lerp(1.1,.4,night); sun.color.setRGB(lerp(1,.5,night),lerp(lerp(.93,.8,morn),.6,night),lerp(lerp(.85,.6,morn),1,night));
   sun.position.set(10+Math.cos(t*Math.PI)*14,16,11-8+Math.sin(t*Math.PI)*4);
   hemi.intensity=lerp(.5,.34,night);
-  for(const k in lamps){ const l=lamps[k]; const target=(l.userData.lit?1.7:.95)+night*.5; l.intensity+=(target-l.intensity)*Math.min(1,dt*2); }
+  const flow=S.phase==='play'?(S.flow||0):0, warm=S.kept.filter(Boolean).length*.22;
+  for(const k in lamps){ const l=lamps[k], b=l.userData.bloom||0; const target=(l.userData.lit?1.7:.95)+night*.5+flow*.9+warm*.5+b*2.6; l.intensity+=(target-l.intensity)*Math.min(1,dt*(b>.1?8:2)); l.userData.bloom=b*Math.exp(-dt*2.2); }
+  hemi.intensity+=flow*.12+warm*.08*morn; sun.color.r=Math.min(1,sun.color.r+warm*.1*morn); sun.color.b=Math.max(0,sun.color.b-warm*.12*morn);
   // sky
   const K=[[0x3b2fa0,0xff7ab8,0xffd08a],[0x1a1250,0xc0308f,0xff6a3a],[0x05041a,0x2a1260,0x7a2f8f]];
   const seg=t<.6?0:1, f2=seg?clamp((t-.6)/.3):t/.6, U=sky.material.uniforms, names=['top','mid','bot'];
   for(let i=0;i<3;i++){ const c0=K[seg][i], c1=K[seg+1][i]; U[names[i]].value.setRGB(lerp((c0>>16&255),(c1>>16&255),f2)/255,lerp((c0>>8&255),(c1>>8&255),f2)/255,lerp((c0&255),(c1&255),f2)/255); }
-  scene.fog.color.copy(U.mid.value).multiplyScalar(.45); stars.material.opacity=night*.9;
+  scene.fog.color.copy(U.mid.value).multiplyScalar(.45); stars.material.opacity=night*.9; tickTex(G,night);
   // the player's body
   const d=dominant(), hi=d?doseK(d):0, fp=S.phase==='play'||S.phase==='card';
   player.g.position.set(P.x,0,P.z); player.body.visible=player.head.visible=false;
@@ -614,14 +706,14 @@ function frame(now){
   else if(S.phase==='end'){ S.endT+=dt; const good=endKind==='level'||endKind==='clear'; V.sky+=((good?.8:.0)-V.sky)*Math.min(1,dt*.5); V.dawn=good?ease(clamp(S.endT/14)):0; for(const n of npcs) n.el.classList.remove('on'); }
   else if(S.phase==='title'){ V.sky=0; }
   if(S.phase!=='end') V.sky*=Math.exp(-dt*2);
-  updScene(dt); lookNow(dt); render();
+  updScene(dt); lookNow(dt); sndTick(dt); render();
   requestAnimationFrame(frame);
 }
 
 /* ---------- wiring ---------- */
 function resetAll(){
-  Object.assign(S,{well:1,habit:0,worry:0,joy:0,total:0,taken:{},lost:0,stage:0,flatSaid:false,blackout:false,order:[],kept:[]});
-  V.sky=0; V.dawn=0; $('#dEnd').classList.remove('on'); startDay(0);
+  Object.assign(S,{well:1,habit:0,worry:0,joy:0,total:0,taken:{},lost:0,stage:0,flatSaid:false,blackout:false,order:[],kept:[],streak:0,score:0,ledger:[]});
+  V.sky=0; V.dawn=0; SND.me={}; $('#dEnd').classList.remove('on'); startDay(0);
 }
 function boot(){
   if(!window.THREE){ fail('The 3D library did not load. Check the connection and reload.'); return; }
@@ -636,7 +728,8 @@ function boot(){
   addEventListener('keydown',e=>{ if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)&&S.phase==='play') e.preventDefault(); if(!e.repeat) keys[e.code]=true; });
   addEventListener('keyup',e=>{ keys[e.code]=false; });
   addEventListener('blur',()=>{ for(const k in keys) keys[k]=false; });
-  $('#begin').addEventListener('click',e=>{ e.currentTarget.blur(); auStart(); sWhoosh(); resetAll(); });
+  showBest();
+  $('#begin').addEventListener('click',e=>{ e.currentTarget.blur(); auStart(); sndStart(); sWhoosh(); resetAll(); });
   $('#back').addEventListener('click',e=>{ e.currentTarget.blur(); sSelect(0); if(S.day>=DAYS.length-1) finish(); else startDay(S.day+1); });
   $('#again').addEventListener('click',e=>{ e.currentTarget.blur(); resetAll(); });
   $('#snd').addEventListener('click',e=>{ auStart(); auMute(!AU.muted); e.currentTarget.textContent=AU.muted?'Sound off':'Sound on'; e.currentTarget.blur(); });
