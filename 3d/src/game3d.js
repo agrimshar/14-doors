@@ -22,7 +22,7 @@ const walls=[], solids=[], gates=[], stations=[], npcs=[], tokens={}, motes=[], 
 const cv=$('#gl');
 let renderer,scene,camera,hemi,sun,rtScene,rtA,rtB,postMat,copyMat,postScene,copyScene,ortho,usePost=true,player,pLight,vTmp;
 let RW=2,RH=2,q=1,slow=0;
-function M(color,o={}){ return new THREE.MeshStandardMaterial({color,roughness:o.rough??.85,metalness:0,emissive:o.em??0x000000,emissiveIntensity:o.ei??1}); }
+function M(color,o={}){ const m=new THREE.MeshStandardMaterial({color,roughness:o.rough??.85,metalness:0,emissive:o.em??0x000000,emissiveIntensity:o.ei??1}); if(o.map){ m.map=o.map; m.bumpMap=o.map; m.bumpScale=o.bs??.012; } return m; }
 function box(w,h,d,x,y,z,color,o={}){
   const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),o.basic?new THREE.MeshBasicMaterial({color}):M(color,o));
   m.position.set(x,y,z); m.castShadow=!o.flat; m.receiveShadow=true; scene.add(m);
@@ -32,7 +32,7 @@ function box(w,h,d,x,y,z,color,o={}){
 function wall(x1,z1,x2,z2){
   const t=.25, hz=Math.abs(z2-z1)<.01;
   const w=hz?x2-x1:t, d=hz?t:z2-z1, cx=(x1+x2)/2, cz=(z1+z2)/2;
-  box(w,2.7,d,cx,1.35,cz,0x4f4488,{rough:.9});
+  box(w,2.7,d,cx,1.35,cz,0x5a4e96,{rough:.9,map:texFit('wall',Math.max(w,d),2.7)});
   box(w+.03,.06,d+.03,cx,2.73,cz,0xf7f0e3,{basic:true,flat:true});
   box(w+.04,.07,d+.04,cx,.035,cz,0xff2e93,{basic:true,flat:true});
   walls.push([cx-w/2,cz-d/2,cx+w/2,cz+d/2]);
@@ -52,12 +52,18 @@ function doorway(x,z,day){
     gates.push({day,mesh:g,box:[x-.8,z-.2,x+.8,z+.2],x,z});
   }
 }
-function figure(col){
+function figurePose(f,want){
+  if(f.state===want) return; const to=f[want], from=f[f.state]; f.state=want;
+  to.reset().setEffectiveWeight(1).play(); to.crossFadeFrom(from,.3,false);
+}
+function figure(col,model){
   const g=new THREE.Group(), c=hexN(col), f={g,head:new THREE.Group(),mixer:null,act:null};
-  f.body=prop('person_walk',0,0,{size:[null,1.72,null],uniform:true,tint:c,ei:.12,fb:c,ready:(m,clips)=>{
+  f.body=prop(model||'person_walk',0,0,Object.assign({size:[null,1.72,null],uniform:true,fb:c,ready:(m,clips)=>{
     if(!clips||!clips.length) return;
-    f.mixer=new THREE.AnimationMixer(m); f.act=f.mixer.clipAction(clips[0]); f.act.play(); f.act.timeScale=.12;
-  }});
+    // one walk clip from the rig; its passing pose (legs together), held, is the standing pose we crossfade to when the walk stops
+    f.mixer=new THREE.AnimationMixer(m); f.walk=f.mixer.clipAction(clips[0]); f.walk.timeScale=1.05;
+    f.idle=f.mixer.clipAction(THREE.AnimationUtils.subclip(clips[0],'idle',8,9,30)); f.idle.setLoop(THREE.LoopRepeat); f.idle.play(); f.state='idle';
+  }},model?{}:{tint:c,ei:.12}));
   scene.remove(f.body); g.add(f.body); g.add(f.head);
   f.mark=new THREE.Mesh(new THREE.OctahedronGeometry(.13),new THREE.MeshBasicMaterial({color:0xff6b5d})); f.mark.position.y=2.05; f.mark.visible=false; g.add(f.mark);
   const glow=new THREE.PointLight(c,.5,2.5,2); glow.position.y=1.1; g.add(glow);
