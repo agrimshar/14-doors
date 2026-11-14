@@ -1,0 +1,91 @@
+/* ---------- the house ---------- */
+#play{touch-action:none;pointer-events:none}
+#play button,#play .prompt{pointer-events:auto}
+.rules{list-style:none;padding:0;display:flex;flex-direction:column;gap:6px;font:400 12px/1.5 var(--mono);letter-spacing:.04em;color:var(--dim);max-width:60ch}
+.rules li{padding-left:20px;position:relative}
+.rules li::before{content:'';position:absolute;left:2px;top:.5em;width:7px;height:7px;transform:rotate(45deg);border:1px solid var(--paper)}
+.tasks{list-style:none;padding:0;margin-top:10px;display:flex;flex-direction:column;gap:7px;font:500 11px/1.2 var(--mono);letter-spacing:.12em;text-transform:uppercase}
+.tasks li{display:flex;gap:10px;align-items:center}
+.tasks i{width:8px;height:8px;transform:rotate(45deg);border:1px solid var(--paper);flex:none}
+.tasks li.done{color:var(--dim)}
+.tasks li.done i{background:var(--dawn);border-color:var(--dawn);box-shadow:0 0 12px 1px var(--dawn)}
+.sndb{position:absolute;right:var(--pad);bottom:clamp(14px,3vh,28px)}
+.m4{display:flex;gap:clamp(14px,2.4vw,34px);flex-wrap:wrap}
+.m4 .bar2{position:relative;width:clamp(90px,11vw,150px)}
+.m4 .bar2 i{transition:background .3s}
+.m4 .bar2 i.hot{background:var(--warn)}
+.m4 .bar2 b{position:absolute;top:-4px;width:1px;height:11px;background:var(--paper)}
+.prompt{position:absolute;left:50%;bottom:clamp(120px,22vh,200px);transform:translateX(-50%);padding:13px 20px;border:1px solid var(--paper);background:rgba(6,5,12,.6);backdrop-filter:blur(8px);font:500 12px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;opacity:0;transition:opacity .2s;overflow:hidden;white-space:nowrap}
+.prompt.on{opacity:1}
+.prompt i{position:absolute;inset:0;background:var(--paper);transform-origin:0 50%;transform:scaleX(0);mix-blend-mode:difference}
+.prompt span{position:relative}
+.lostlab,.edge{position:absolute;left:50%;top:clamp(70px,13vh,120px);transform:translateX(-50%);font:500 12px/1 var(--mono);letter-spacing:.3em;text-transform:uppercase;padding:12px 18px;opacity:0;transition:opacity .25s;white-space:nowrap}
+.lostlab{background:var(--warn);color:var(--ink)}
+.lostlab.on{opacity:1;animation:blink .5s steps(2) infinite}
+.edge{color:var(--warn);border:1px solid var(--warn);background:rgba(6,5,12,.5)}
+.edge.on{opacity:1}
+@keyframes blink{50%{opacity:.55}}
+.bubble{position:absolute;transform:translate(-50%,-100%);max-width:240px;padding:9px 13px;background:var(--paper);color:var(--ink);font:italic 400 17px/1.2 var(--display);opacity:0;transition:opacity .25s;pointer-events:none;text-align:center}
+.bubble::after{content:'';position:absolute;left:50%;bottom:-5px;width:10px;height:10px;margin-left:-5px;background:var(--paper);transform:rotate(45deg)}
+.bubble.on{opacity:1}
+#play .cap{bottom:clamp(74px,13vh,120px);font-size:clamp(20px,2.5vw,34px)}
+.errline{position:absolute;left:var(--pad);top:50%;font:500 11px var(--mono);color:var(--warn);max-width:80ch}
+#dawn .end{max-height:calc(100% - 2*var(--pad));overflow:auto}
+@media (max-width:700px){ .tasks{display:none} .m4 .lab{font-size:9px} }
+
+/* ---------- first person: the goal, the marker ---------- */
+.obj{position:absolute;right:var(--pad);top:clamp(14px,3vh,30px);display:flex;flex-direction:column;align-items:flex-end;gap:8px;text-shadow:0 1px 16px #000;max-width:300px;text-align:right}
+.oline{display:flex;align-items:baseline;gap:10px}
+.oline #hJoy{font:italic 500 clamp(34px,4.6vw,64px)/1 var(--display);font-variant-numeric:tabular-nums}
+.ogoal{font:italic 400 clamp(18px,2vw,26px)/1 var(--display);color:var(--dim)}
+.obar{width:min(260px,40vw);height:4px}
+.obar i{background:var(--paper);transition:background .4s}
+.obj.met .obar i{background:var(--dawn);box-shadow:0 0 14px var(--dawn)}
+.obj.met #hJoy{color:var(--dawn)}
+.otext{color:var(--paper);line-height:1.5}
+#dGems i.on{border-color:var(--dawn);background:var(--dawn);box-shadow:0 0 14px 1px var(--dawn)}
+#dGems i.off{border-color:var(--warn)}
+#dGems i.now{border-color:var(--paper);background:var(--paper)}
+.mark{position:absolute;top:clamp(16px,3.4vh,34px);left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;font:500 11px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;white-space:nowrap;text-shadow:0 1px 10px #000;transition:left .12s linear}
+.mark i{width:11px;height:11px;transform:rotate(45deg);background:var(--dawn);box-shadow:0 0 16px 2px var(--dawn)}
+.mark.edge i{background:none;border:1px solid var(--dawn)}
+.dot{position:absolute;left:50%;top:50%;width:5px;height:5px;margin:-2.5px;border-radius:50%;background:var(--paper);opacity:.7;mix-blend-mode:difference}
+.look{position:absolute;left:50%;bottom:clamp(40px,7vh,64px);transform:translateX(-50%);color:var(--paper);white-space:nowrap;text-shadow:0 1px 10px #000;transition:opacity .4s}
+.look.off{opacity:0}
+#hDay.late{color:var(--warn)}
+#play .foot{justify-content:flex-start}
+@media (max-width:700px){ .look{display:none} .otext{display:none} }
+
+/* ---------- type and legibility: future punk, minimal, clean ---------- */
+:root{--display:'Syncopate','Eurostile','Bank Gothic','Arial Black',sans-serif;--text:'Chakra Petch','Segoe UI',system-ui,sans-serif;--mono:'Chakra Petch','Segoe UI',system-ui,sans-serif;--neon:#ff2e93;--dim:rgba(247,240,227,.78)}
+body{font:400 15px/1.5 var(--text)}
+h1{font:700 clamp(32px,7.2vw,108px)/1 var(--display);letter-spacing:-.02em;text-transform:uppercase}
+h1 em{font-style:normal;font-weight:700;color:var(--neon);display:block;text-shadow:0 0 34px rgba(255,46,147,.55)}
+h2{font:700 clamp(26px,4.8vw,72px)/1.02 var(--display);font-style:normal;letter-spacing:-.01em;text-transform:uppercase}
+.eyebrow,.lab{font:600 12px/1.2 var(--text);letter-spacing:.22em;color:var(--dim)}
+.lede{font:400 clamp(16px,1.45vw,20px)/1.55 var(--text);max-width:54ch}
+.rules{font:500 14px/1.5 var(--text);letter-spacing:.02em;color:var(--paper)}
+.rules li::before{border-color:var(--neon);box-shadow:0 0 8px var(--neon)}
+.fine{font-size:12.5px;letter-spacing:.04em;color:var(--dim)}
+.btn{font:700 13px/1 var(--text);letter-spacing:.2em;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))}
+.link{font:600 12px/1 var(--text)}
+.stats{font:600 13px/1.4 var(--text);letter-spacing:.12em}
+.stats dd{color:var(--paper)}
+.lesson{font:500 clamp(15px,1.4vw,19px)/1.4 var(--text);font-style:normal}
+.lesson small{font:600 11px/1.6 var(--text);letter-spacing:.2em}
+.tasks{font:600 12px/1.2 var(--text)}
+.bubble{font:600 15px/1.25 var(--text);font-style:normal;clip-path:none}
+.oline #hJoy{font:700 clamp(28px,3.4vw,46px)/1 var(--display);font-style:normal}
+.ogoal{font:400 clamp(13px,1.3vw,17px)/1 var(--display);font-style:normal;color:var(--dim)}
+.who{font:600 12px/1.2 var(--text);letter-spacing:.2em}
+.mark{font:600 12px/1 var(--text);letter-spacing:.18em}
+.mark span,.look{background:rgba(6,5,12,.62);padding:7px 11px}
+.prompt{font:700 13px/1 var(--text);background:rgba(6,5,12,.8)}
+.lostlab,.edge{font:700 13px/1 var(--text)}
+/* scrims behind every block of text */
+#title::before,#card::before,#dawn::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(6,5,12,.94) 0%,rgba(6,5,12,.84) 36%,rgba(6,5,12,.3) 72%,rgba(6,5,12,0) 100%)}
+.anchor{text-shadow:none;gap:20px}
+#play .cap,.cap{font:500 clamp(17px,2vw,28px)/1.35 var(--text);font-style:normal;width:fit-content;max-width:min(30em,calc(100% - 2*var(--pad)));right:auto;padding:13px 18px;background:rgba(6,5,12,.74);border-left:3px solid var(--neon);backdrop-filter:blur(10px);text-shadow:none}
+.who,.obj,.m4{background:rgba(6,5,12,.62);backdrop-filter:blur(10px);padding:14px 16px;border:1px solid var(--faint);text-shadow:none;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))}
+.otext{font:500 12px/1.5 var(--text);letter-spacing:.08em;text-transform:none;color:var(--paper)}
+.look{left:auto;right:var(--pad);transform:none;bottom:clamp(52px,8.5vh,76px)}

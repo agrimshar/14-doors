@@ -1,0 +1,1815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fourteen Doors 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Chakra+Petch:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* layout: one full-bleed shader stage; type floats on it, anchored bottom-left, with hairline rules. doors are arches. */
+  color-scheme:dark;
+  --ink:#06050c;
+  --paper:#f7f0e3;
+  --dim:rgba(247,240,227,.62);
+  --faint:rgba(247,240,227,.18);
+  --dawn:#ffb46a;
+  --warn:#ff6b5d;
+  --display:'Bodoni Moda','Didot','Bodoni 72',Georgia,serif;
+  --mono:'DM Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  --pad:clamp(18px,4.5vw,72px);
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{background:var(--ink);color:var(--paper);font:400 14px/1.5 var(--mono);overflow:hidden;-webkit-font-smoothing:antialiased}
+#gl{position:fixed;inset:0;width:100%;height:100%;display:block}
+#ui{position:fixed;inset:0}
+em{font-style:italic}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:focus-visible{outline:2px solid var(--paper);outline-offset:3px}
+
+.scr{position:absolute;inset:0;opacity:0;visibility:hidden;transition:opacity .7s ease,visibility 0s .7s}
+.scr.on{opacity:1;visibility:visible;transition:opacity .9s ease}
+.anchor{position:absolute;left:var(--pad);right:var(--pad);bottom:var(--pad);max-width:680px;display:flex;flex-direction:column;gap:18px;align-items:flex-start;text-shadow:0 1px 28px rgba(0,0,0,.75)}
+.eyebrow,.lab{font:500 11px/1.2 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+h1{font:500 clamp(60px,13vw,196px)/.84 var(--display);letter-spacing:-.03em;text-wrap:balance}
+h1 em{font-weight:400}
+h2{font:italic 400 clamp(40px,7vw,104px)/.95 var(--display);letter-spacing:-.02em;text-wrap:balance}
+.lede{font:400 clamp(17px,1.7vw,23px)/1.4 var(--display);max-width:54ch;color:var(--paper)}
+.fine{font-size:11px;letter-spacing:.06em;color:var(--dim)}
+.dim{color:var(--dim)}
+
+.btn{font:500 12px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;padding:16px 22px;border:1px solid var(--paper);color:var(--paper);background:rgba(6,5,12,.35);backdrop-filter:blur(8px);transition:background .25s,color .25s,opacity .25s,box-shadow .25s;text-shadow:none}
+.btn:hover:not(:disabled){background:var(--paper);color:var(--ink)}
+.btn.solid{background:var(--paper);color:var(--ink)}
+.btn.solid:hover{box-shadow:0 0 44px -4px var(--paper)}
+.btn.dawn:not(:disabled){background:var(--dawn);border-color:var(--dawn);color:var(--ink);box-shadow:0 0 50px -6px var(--dawn)}
+.btn:disabled{opacity:.32;cursor:default}
+.link{font:500 11px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--dim);padding:10px 0;border-bottom:1px solid var(--faint)}
+.link:hover{color:var(--paper);border-color:var(--paper)}
+
+/* ---------- the night ---------- */
+#hub{display:flex;flex-direction:column;align-items:center;gap:clamp(8px,2vh,22px);padding:clamp(12px,2.4vh,28px) var(--pad);overflow-y:auto}
+.bar{width:100%;display:flex;justify-content:space-between;align-items:center}
+.mark{font:500 22px/1 var(--display);letter-spacing:-.01em}
+.doors{display:grid;grid-template-columns:repeat(7,minmax(64px,116px));gap:clamp(8px,1.1vw,14px);justify-content:center;width:100%;margin-block:auto}
+.door{position:relative;height:clamp(92px,17.5vh,168px);border-radius:999px 999px 3px 3px;border:1px solid var(--faint);
+  background:linear-gradient(180deg,color-mix(in srgb,var(--a) 30%,transparent),color-mix(in srgb,var(--b) 8%,transparent) 70%),rgba(6,5,12,.6);
+  backdrop-filter:blur(6px);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:5px;padding:0 6px 12px;
+  transition:transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s,border-color .35s,background .35s,color .35s,opacity .35s}
+.door .n{position:absolute;top:26%;font-size:10px;letter-spacing:.14em;color:var(--dim)}
+.door .c{font:italic 500 clamp(24px,2.7vw,40px)/1 var(--display)}
+.door .nm{font-size:9.5px;line-height:1.25;letter-spacing:.1em;text-transform:uppercase;text-align:center;min-height:2.5em;color:var(--dim)}
+.door .gem{position:absolute;top:12%;width:9px;height:9px;transform:rotate(45deg);border:1px solid var(--faint)}
+.door.seen .gem{border-color:var(--a)}
+.door.has .gem{background:var(--a);border-color:var(--a);box-shadow:0 0 16px 2px var(--a)}
+.door:hover:not(:disabled){transform:translateY(-5px);border-color:var(--a);box-shadow:0 0 46px -8px var(--a)}
+.door.sel{background:linear-gradient(180deg,var(--a),var(--b));color:var(--ink);border-color:transparent;box-shadow:0 0 60px -6px var(--a);transform:translateY(-5px)}
+.door.sel .n,.door.sel .nm{color:rgba(6,5,12,.78)}
+.door.sel .gem{border-color:rgba(6,5,12,.6)}
+.door:disabled{opacity:.3;cursor:default}
+
+.console{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:clamp(16px,4vw,56px);width:min(760px,100%)}
+.meter{display:flex;flex-direction:column;gap:9px}
+#tideBox{align-items:flex-end;text-align:right}
+.val{font:italic 400 18px/1 var(--display)}
+.beam{position:relative;width:min(190px,100%);height:14px;border-bottom:1px solid var(--paper)}
+.beam .zone{position:absolute;left:40%;width:20%;bottom:0;height:6px;border-inline:1px solid var(--paper)}
+.beam .mk{position:absolute;left:50%;bottom:3px;width:9px;height:9px;margin-left:-4.5px;transform:rotate(45deg);background:var(--paper);transition:left .8s cubic-bezier(.2,.8,.2,1),background .4s}
+.beam .mk.off{background:var(--warn)}
+.gems{display:flex;gap:10px;height:14px;align-items:center}
+.gems i{width:11px;height:11px;transform:rotate(45deg);border:1px solid var(--dim)}
+.gems i.on{border-color:transparent;background:var(--c);box-shadow:0 0 16px 1px var(--c)}
+.orbwrap{display:flex;flex-direction:column;align-items:center;gap:10px}
+.orb{--well:1;--breath:0;position:relative;width:clamp(72px,12vh,104px);aspect-ratio:1;border-radius:50%;transform:scale(calc(1 + var(--breath)*.35));touch-action:none}
+.orb .ring{position:absolute;inset:0;border-radius:50%;background:conic-gradient(var(--paper) calc(var(--well)*360deg),var(--faint) 0);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 2px));mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 2px))}
+.orb .core{position:absolute;inset:16%;border-radius:50%;background:radial-gradient(circle at 50% 45%,#fff,var(--dawn) 45%,transparent 72%);opacity:calc(.25 + var(--well)*.6 + var(--breath)*.3);filter:blur(1px)}
+.status{font:italic 400 clamp(17px,1.9vw,24px)/1.3 var(--display);text-align:center;min-height:2.6em;max-width:60ch;text-wrap:balance;text-shadow:0 1px 20px rgba(0,0,0,.8)}
+.actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;padding-bottom:4px}
+
+/* ---------- inside a door ---------- */
+#trip,#title,#card,#dawn,#gl{touch-action:none}
+.prog{position:absolute;left:0;top:0;height:2px;width:100%;background:var(--paper);transform-origin:0 50%;transform:scaleX(0)}
+.who{position:absolute;left:var(--pad);top:clamp(18px,3.4vh,34px);display:flex;flex-direction:column;gap:7px;font:500 11px/1.2 var(--mono);letter-spacing:.16em;text-transform:uppercase;text-shadow:0 1px 12px #000}
+.light{position:absolute;right:var(--pad);top:clamp(14px,3vh,30px);display:flex;align-items:baseline;gap:10px;text-shadow:0 1px 16px #000}
+.light #tLight{font:italic 500 clamp(34px,4.6vw,64px)/1 var(--display);font-variant-numeric:tabular-nums}
+.gain{font:500 12px var(--mono);opacity:0}
+.gain.pop{animation:pop .7s ease-out}
+@keyframes pop{0%{opacity:1;transform:translateY(8px)}100%{opacity:0;transform:translateY(-14px)}}
+.tcard{position:absolute;left:var(--pad);right:var(--pad);top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:14px;opacity:0;transition:opacity 1s;text-shadow:0 2px 30px rgba(0,0,0,.85)}
+.tcard.on{opacity:1}
+.tcard .hint{font:500 12px/1.5 var(--mono);letter-spacing:.14em;text-transform:uppercase;max-width:52ch}
+.cap{position:absolute;left:var(--pad);right:var(--pad);bottom:clamp(64px,13vh,120px);font:italic 400 clamp(22px,3.1vw,42px)/1.18 var(--display);max-width:26em;text-wrap:balance;opacity:0;transform:translateY(8px);transition:opacity .9s,transform .9s;text-shadow:0 2px 24px #000,0 0 3px rgba(0,0,0,.7)}
+.cap.on{opacity:1;transform:none}
+.foot{position:absolute;left:var(--pad);right:var(--pad);bottom:clamp(14px,3vh,28px);display:flex;justify-content:space-between;align-items:flex-end}
+.mini{display:flex;flex-direction:column;gap:8px}
+.bar2{width:150px;height:3px;background:var(--faint)}
+.bar2 i{display:block;height:100%;background:var(--paper);transform-origin:0 50%}
+#leave{pointer-events:auto;text-shadow:0 1px 10px #000}
+.gate{position:absolute;left:0;top:0;font:500 11px var(--mono);letter-spacing:.3em;text-transform:uppercase;transform:translate(-50%,-50%);opacity:0;text-shadow:0 0 12px #000}
+
+/* ---------- afterwards, and morning ---------- */
+.stats{display:grid;grid-template-columns:auto auto;gap:6px 26px;font:500 11px/1.3 var(--mono);letter-spacing:.14em;text-transform:uppercase}
+.stats dt{color:var(--dim)}
+.stats dd{font-variant-numeric:tabular-nums}
+.lessons{display:flex;flex-direction:column;gap:10px}
+.lesson{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:baseline;font:italic 400 clamp(18px,2vw,26px)/1.25 var(--display)}
+.lesson i{width:10px;height:10px;transform:rotate(45deg) translateY(-2px);background:var(--c);box-shadow:0 0 18px 2px var(--c)}
+.lesson small{display:block;font:500 10px/1.6 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--dim);font-style:normal}
+.dline{position:absolute;left:var(--pad);right:var(--pad);top:16%;font:italic 400 clamp(26px,4.2vw,60px)/1.12 var(--display);max-width:20em;text-wrap:balance;opacity:0;transform:translateY(10px);transition:opacity 1.1s,transform 1.1s;text-shadow:0 2px 30px rgba(0,0,0,.8)}
+.dline.on{opacity:1;transform:none}
+.dline small{display:block;margin-bottom:14px;font:500 11px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;font-style:normal}
+.end{opacity:0;visibility:hidden;transition:opacity 1.6s}
+.end.on{opacity:1;visibility:visible}
+.end::before{content:'';position:absolute;z-index:-1;inset:-60px -160px -90px -90px;background:radial-gradient(closest-side,rgba(6,5,12,.62),rgba(6,5,12,0))}
+.end .lesson{font-size:clamp(14px,1.35vw,18px)}
+.nogl{position:absolute;inset:auto var(--pad) var(--pad);font:italic 22px var(--display)}
+
+@media (max-width:860px){
+  .doors{grid-template-columns:repeat(5,minmax(56px,1fr))}
+  .door{height:clamp(84px,13vh,120px)}
+  .door .n{display:none}
+}
+@media (max-width:520px){
+  .doors{grid-template-columns:repeat(4,1fr)}
+  .console{grid-template-columns:1fr;justify-items:center}
+  #tideBox{align-items:center;text-align:center}
+  .meter{align-items:center}
+}
+@media (prefers-reduced-motion:reduce){
+  .scr,.door,.cap,.dline,.tcard{transition-duration:.01s}
+}
+
+/* ---------- the house ---------- */
+#play{touch-action:none;pointer-events:none}
+#play button,#play .prompt{pointer-events:auto}
+.rules{list-style:none;padding:0;display:flex;flex-direction:column;gap:6px;font:400 12px/1.5 var(--mono);letter-spacing:.04em;color:var(--dim);max-width:60ch}
+.rules li{padding-left:20px;position:relative}
+.rules li::before{content:'';position:absolute;left:2px;top:.5em;width:7px;height:7px;transform:rotate(45deg);border:1px solid var(--paper)}
+.tasks{list-style:none;padding:0;margin-top:10px;display:flex;flex-direction:column;gap:7px;font:500 11px/1.2 var(--mono);letter-spacing:.12em;text-transform:uppercase}
+.tasks li{display:flex;gap:10px;align-items:center}
+.tasks i{width:8px;height:8px;transform:rotate(45deg);border:1px solid var(--paper);flex:none}
+.tasks li.done{color:var(--dim)}
+.tasks li.done i{background:var(--dawn);border-color:var(--dawn);box-shadow:0 0 12px 1px var(--dawn)}
+.sndb{position:absolute;right:var(--pad);bottom:clamp(14px,3vh,28px)}
+.m4{display:flex;gap:clamp(14px,2.4vw,34px);flex-wrap:wrap}
+.m4 .bar2{position:relative;width:clamp(90px,11vw,150px)}
+.m4 .bar2 i{transition:background .3s}
+.m4 .bar2 i.hot{background:var(--warn)}
+.m4 .bar2 b{position:absolute;top:-4px;width:1px;height:11px;background:var(--paper)}
+.prompt{position:absolute;left:50%;bottom:clamp(120px,22vh,200px);transform:translateX(-50%);padding:13px 20px;border:1px solid var(--paper);background:rgba(6,5,12,.6);backdrop-filter:blur(8px);font:500 12px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;opacity:0;transition:opacity .2s;overflow:hidden;white-space:nowrap}
+.prompt.on{opacity:1}
+.prompt i{position:absolute;inset:0;background:var(--paper);transform-origin:0 50%;transform:scaleX(0);mix-blend-mode:difference}
+.prompt span{position:relative}
+.lostlab,.edge{position:absolute;left:50%;top:clamp(70px,13vh,120px);transform:translateX(-50%);font:500 12px/1 var(--mono);letter-spacing:.3em;text-transform:uppercase;padding:12px 18px;opacity:0;transition:opacity .25s;white-space:nowrap}
+.lostlab{background:var(--warn);color:var(--ink)}
+.lostlab.on{opacity:1;animation:blink .5s steps(2) infinite}
+.edge{color:var(--warn);border:1px solid var(--warn);background:rgba(6,5,12,.5)}
+.edge.on{opacity:1}
+@keyframes blink{50%{opacity:.55}}
+.bubble{position:absolute;transform:translate(-50%,-100%);max-width:240px;padding:9px 13px;background:var(--paper);color:var(--ink);font:italic 400 17px/1.2 var(--display);opacity:0;transition:opacity .25s;pointer-events:none;text-align:center}
+.bubble::after{content:'';position:absolute;left:50%;bottom:-5px;width:10px;height:10px;margin-left:-5px;background:var(--paper);transform:rotate(45deg)}
+.bubble.on{opacity:1}
+#play .cap{bottom:clamp(74px,13vh,120px);font-size:clamp(20px,2.5vw,34px)}
+.errline{position:absolute;left:var(--pad);top:50%;font:500 11px var(--mono);color:var(--warn);max-width:80ch}
+#dawn .end{max-height:calc(100% - 2*var(--pad));overflow:auto}
+@media (max-width:700px){ .tasks{display:none} .m4 .lab{font-size:9px} }
+
+/* ---------- first person: the goal, the marker ---------- */
+.obj{position:absolute;right:var(--pad);top:clamp(14px,3vh,30px);display:flex;flex-direction:column;align-items:flex-end;gap:8px;text-shadow:0 1px 16px #000;max-width:300px;text-align:right}
+.oline{display:flex;align-items:baseline;gap:10px}
+.oline #hJoy{font:italic 500 clamp(34px,4.6vw,64px)/1 var(--display);font-variant-numeric:tabular-nums}
+.ogoal{font:italic 400 clamp(18px,2vw,26px)/1 var(--display);color:var(--dim)}
+.obar{width:min(260px,40vw);height:4px}
+.obar i{background:var(--paper);transition:background .4s}
+.obj.met .obar i{background:var(--dawn);box-shadow:0 0 14px var(--dawn)}
+.obj.met #hJoy{color:var(--dawn)}
+.otext{color:var(--paper);line-height:1.5}
+#dGems i.on{border-color:var(--dawn);background:var(--dawn);box-shadow:0 0 14px 1px var(--dawn)}
+#dGems i.off{border-color:var(--warn)}
+#dGems i.now{border-color:var(--paper);background:var(--paper)}
+.mark{position:absolute;top:clamp(16px,3.4vh,34px);left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;font:500 11px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;white-space:nowrap;text-shadow:0 1px 10px #000;transition:left .12s linear}
+.mark i{width:11px;height:11px;transform:rotate(45deg);background:var(--dawn);box-shadow:0 0 16px 2px var(--dawn)}
+.mark.edge i{background:none;border:1px solid var(--dawn)}
+.dot{position:absolute;left:50%;top:50%;width:5px;height:5px;margin:-2.5px;border-radius:50%;background:var(--paper);opacity:.7;mix-blend-mode:difference}
+.look{position:absolute;left:50%;bottom:clamp(40px,7vh,64px);transform:translateX(-50%);color:var(--paper);white-space:nowrap;text-shadow:0 1px 10px #000;transition:opacity .4s}
+.look.off{opacity:0}
+#hDay.late{color:var(--warn)}
+#play .foot{justify-content:flex-start}
+@media (max-width:700px){ .look{display:none} .otext{display:none} }
+
+/* ---------- type and legibility: future punk, minimal, clean ---------- */
+:root{--display:'Syncopate','Eurostile','Bank Gothic','Arial Black',sans-serif;--text:'Chakra Petch','Segoe UI',system-ui,sans-serif;--mono:'Chakra Petch','Segoe UI',system-ui,sans-serif;--neon:#ff2e93;--dim:rgba(247,240,227,.78)}
+body{font:400 15px/1.5 var(--text)}
+h1{font:700 clamp(32px,7.2vw,108px)/1 var(--display);letter-spacing:-.02em;text-transform:uppercase}
+h1 em{font-style:normal;font-weight:700;color:var(--neon);display:block;text-shadow:0 0 34px rgba(255,46,147,.55)}
+h2{font:700 clamp(26px,4.8vw,72px)/1.02 var(--display);font-style:normal;letter-spacing:-.01em;text-transform:uppercase}
+.eyebrow,.lab{font:600 12px/1.2 var(--text);letter-spacing:.22em;color:var(--dim)}
+.lede{font:400 clamp(16px,1.45vw,20px)/1.55 var(--text);max-width:54ch}
+.rules{font:500 14px/1.5 var(--text);letter-spacing:.02em;color:var(--paper)}
+.rules li::before{border-color:var(--neon);box-shadow:0 0 8px var(--neon)}
+.fine{font-size:12.5px;letter-spacing:.04em;color:var(--dim)}
+.btn{font:700 13px/1 var(--text);letter-spacing:.2em;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))}
+.link{font:600 12px/1 var(--text)}
+.stats{font:600 13px/1.4 var(--text);letter-spacing:.12em}
+.stats dd{color:var(--paper)}
+.lesson{font:500 clamp(15px,1.4vw,19px)/1.4 var(--text);font-style:normal}
+.lesson small{font:600 11px/1.6 var(--text);letter-spacing:.2em}
+.tasks{font:600 12px/1.2 var(--text)}
+.bubble{font:600 15px/1.25 var(--text);font-style:normal;clip-path:none}
+.oline #hJoy{font:700 clamp(28px,3.4vw,46px)/1 var(--display);font-style:normal}
+.ogoal{font:400 clamp(13px,1.3vw,17px)/1 var(--display);font-style:normal;color:var(--dim)}
+.who{font:600 12px/1.2 var(--text);letter-spacing:.2em}
+.mark{font:600 12px/1 var(--text);letter-spacing:.18em}
+.mark span,.look{background:rgba(6,5,12,.62);padding:7px 11px}
+.prompt{font:700 13px/1 var(--text);background:rgba(6,5,12,.8)}
+.lostlab,.edge{font:700 13px/1 var(--text)}
+/* scrims behind every block of text */
+#title::before,#card::before,#dawn::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(6,5,12,.94) 0%,rgba(6,5,12,.84) 36%,rgba(6,5,12,.3) 72%,rgba(6,5,12,0) 100%)}
+.anchor{text-shadow:none;gap:20px}
+#play .cap,.cap{font:500 clamp(17px,2vw,28px)/1.35 var(--text);font-style:normal;width:fit-content;max-width:min(30em,calc(100% - 2*var(--pad)));right:auto;padding:13px 18px;background:rgba(6,5,12,.74);border-left:3px solid var(--neon);backdrop-filter:blur(10px);text-shadow:none}
+.who,.obj,.m4{background:rgba(6,5,12,.62);backdrop-filter:blur(10px);padding:14px 16px;border:1px solid var(--faint);text-shadow:none;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))}
+.otext{font:500 12px/1.5 var(--text);letter-spacing:.08em;text-transform:none;color:var(--paper)}
+.look{left:auto;right:var(--pad);transform:none;bottom:clamp(52px,8.5vh,76px)}
+
+</style>
+</head>
+<body>
+<canvas id="gl" aria-hidden="true"></canvas>
+<main id="ui">
+
+  <section id="title" class="scr on" aria-label="Title">
+    <div class="anchor">
+      <p class="eyebrow">A true story, four days long</p>
+      <h1>Fourteen <em>Doors</em></h1>
+      <p class="lede">It started in my room with the door shut. Fourteen small doors were hidden around the house, and my family was on the other side of the wall. These are four days of trying to enjoy my life without losing hold of it.</p>
+      <ul class="rules">
+        <li>Each day has a joy goal. Reach it, then get to bed before midnight. Keep three of the four days.</li>
+        <li>Ordinary things give joy. Follow the marker at the top of the screen to the next one.</li>
+        <li>The glowing doors give joy faster. Each one costs you, and each repeat pays less.</li>
+        <li>Stay under your limit. Past it, your hands stop being yours.</li>
+        <li>If the family finds out, or the habit fills, it is over.</li>
+      </ul>
+      <button id="begin" class="btn solid">Wake up</button>
+      <p class="fine">Click to look, WASD to walk, hold E to act. Headphones on. A story, and never a guide.</p>
+    </div>
+  </section>
+
+  <section id="play" class="scr" aria-label="The house">
+    <div class="who"><span id="hDay"></span><span id="hStage" class="dim"></span>
+      <ul id="hTasks" class="tasks"></ul>
+    </div>
+    <div id="obj" class="obj">
+      <div class="gems" id="dGems"><i></i><i></i><i></i><i></i></div>
+      <div class="oline"><span id="tGain" class="gain"></span><span id="hJoy">0</span><span id="hGoal" class="ogoal">/ 16</span><span class="lab">joy today</span></div>
+      <div class="bar2 obar"><i id="oBar"></i></div>
+      <p id="oText" class="lab otext"></p>
+    </div>
+    <div id="mark" class="mark"><i></i><span id="mText"></span></div>
+    <i class="dot"></i>
+    <p id="look" class="lab look">Click to look around · WASD to walk · hold E to act · Esc frees the mouse</p>
+    <button id="snd" class="link sndb">Sound on</button>
+    <div id="bubbles"></div>
+    <div id="lost" class="lostlab">Not in control</div>
+    <div id="hEdge" class="edge">Close to the limit</div>
+    <p id="tCap" class="cap"></p>
+    <div id="prompt" class="prompt"><i id="pFill"></i><span id="pText"></span></div>
+    <div class="foot">
+      <div class="m4">
+        <div class="mini"><span class="lab">The well</span><div class="bar2"><i id="mWell"></i></div></div>
+        <div class="mini"><span class="lab">In my blood</span><div class="bar2"><i id="mLoad"></i><b id="mLim"></b></div></div>
+        <div class="mini"><span class="lab">The habit</span><div class="bar2"><i id="mHab"></i></div></div>
+        <div class="mini"><span class="lab">What they know</span><div class="bar2"><i id="mHome"></i></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="card" class="scr" aria-label="Night">
+    <div class="anchor">
+      <p class="eyebrow" id="cEyebrow"></p>
+      <h2 id="cBig"></h2>
+      <p class="lede" id="cLine"></p>
+      <dl class="stats" id="cStats"></dl>
+      <div id="cShards" class="lessons"></div>
+      <button id="back" class="btn solid">Next morning</button>
+    </div>
+  </section>
+
+  <section id="dawn" class="scr" aria-label="Ending">
+    <div id="dEnd" class="anchor end">
+      <p class="eyebrow" id="dKicker"></p>
+      <h2 id="dTitle"></h2>
+      <p class="lede" id="dText"></p>
+      <dl class="stats" id="dStats"></dl>
+      <div id="dLessons" class="lessons"></div>
+      <button id="again" class="btn solid">Begin again</button>
+    </div>
+  </section>
+
+  <p id="nogl" class="nogl" hidden></p>
+  <p id="err" class="errline" hidden></p>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ---------- shaders: one world per door ---------- */
+const VERT = `#version 300 es
+in vec2 aP; out vec2 vUv;
+void main(){ vUv=aP*.5+.5; gl_Position=vec4(aP,0.,1.); }`;
+
+const FRAG_FB = `#version 300 es
+precision highp float;
+in vec2 vUv; out vec4 o;
+uniform sampler2D uPrev,uSpr;
+uniform float uDecay,uZoom,uRot,uFlow,uT,uAsp;
+uniform vec2 uDrift;
+float hash(vec2 p){ p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }
+float noise(vec2 p){ vec2 i=floor(p),f=fract(p); f=f*f*(3.-2.*f);
+  return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y); }
+void main(){
+  vec2 c=vUv-.5; c.x*=uAsp;
+  float cs=cos(uRot),sn=sin(uRot);
+  c=mat2(cs,-sn,sn,cs)*c*(1.-uZoom);
+  c+=(vec2(noise(c*5.+uT*.3),noise(c*5.+7.3-uT*.25))-.5)*uFlow;
+  c.x/=uAsp;
+  vec3 prev=texture(uPrev,c+.5-uDrift).rgb*uDecay;
+  prev=max(prev-.004,0.);
+  vec3 s=texture(uSpr,vUv).rgb;
+  o=vec4(max(prev,s),1.);
+}`;
+
+const FRAG_MAIN = `#version 300 es
+precision highp float;
+out vec4 o;
+uniform sampler2D uFb;
+uniform vec2 uRes,uPlayer,uVc;
+uniform float uT,uG,uK,uBeat,uAuxA,uAuxB,uDawn;
+uniform int uMA,uMB,uShardN;
+uniform vec3 uShard[5];
+uniform float uCA,uSat,uVig,uWob,uScan,uDbl,uBloom,uBlack,uFlash,uGrain;
+
+float hash(vec2 p){ p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }
+float noise(vec2 p){ vec2 i=floor(p),f=fract(p); f=f*f*(3.-2.*f);
+  return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y); }
+float fbm(vec2 p){ float a=.5,s=0.; for(int i=0;i<5;i++){ s+=a*noise(p); p=p*2.03+vec2(1.7,9.2); a*=.5; } return s; }
+mat2 rot(float a){ float c=cos(a),s=sin(a); return mat2(c,-s,s,c); }
+vec3 pal(float t,vec3 a,vec3 b,vec3 c,vec3 d){ return a+b*cos(6.28318*(c*t+d)); }
+
+/* 0 MDMA: the warm room */
+vec3 wMd(vec2 p,float t){
+  vec2 q=p+.3*(vec2(fbm(p*1.2+t*.15),fbm(p*1.2-t*.12+7.))-.5);
+  float f=fbm(q*1.6+vec2(0.,t*.1));
+  vec3 c=mix(vec3(.22,0.,.2),vec3(1.,.14,.56),smoothstep(.25,.72,f));
+  c=mix(c,vec3(1.,.78,.28),smoothstep(.58,.95,f+.18*uBeat));
+  for(int i=0;i<3;i++){
+    float fi=float(i);
+    vec2 g=p*(1.4+fi*.9)+vec2(t*.05*(fi+1.),fi*3.1);
+    vec2 id=floor(g),f2=fract(g)-.5;
+    float h=hash(id+fi*17.);
+    vec2 off=(vec2(hash(id+1.3),hash(id+2.7))-.5)*.5;
+    float r=.12+.2*h,d=length(f2-off);
+    float b=smoothstep(r,r*.8,d)*(.35+.65*smoothstep(r*.5,r,d));
+    c+=b*mix(vec3(1.,.3,.6),vec3(1.,.8,.4),h)*(.1+.2*uBeat)*step(.45,h);
+  }
+  float d=length(p-uPlayer);
+  c+=exp(-pow((d-(1.-uBeat)*1.7)*5.,2.))*uBeat*vec3(1.,.6,.7)*.45;
+  c+=.3*exp(-d*d*3.)*vec3(1.,.5,.45);
+  return c;
+}
+/* 1 Psychedelics: the garden */
+vec3 wPs(vec2 p,float t){
+  float r=length(p),a=atan(p.y,p.x);
+  float seg=6.28318/6.;
+  a=abs(mod(a+t*.05,seg)-seg*.5);
+  vec2 q=r*vec2(cos(a),sin(a))*(1.+.12*sin(t*.6));
+  vec2 w=q*2.2;
+  w+=.7*vec2(fbm(w+t*.2),fbm(w+5.2-t*.17));
+  float f=fbm(w*1.5);
+  float veins=smoothstep(0.,.9,abs(sin(18.*f-6.*r+t*1.5)));
+  vec3 c=pal(f*1.6+r*.5-t*.12,vec3(.55,.5,.55),vec3(.5,.5,.45),vec3(1.),vec3(0.,.33,.67));
+  c*=.22+.95*veins;
+  c+=pow(1.-veins,6.)*vec3(1.,.95,.8)*.6;
+  return c;
+}
+/* 2 Cannabis: the slow green */
+vec3 wCn(vec2 p,float t){
+  t*=.35; vec2 q=p*1.1;
+  vec2 w=vec2(fbm(q+vec2(0.,t)),fbm(q+vec2(5.2,-t*.8)));
+  vec2 w2=vec2(fbm(q+3.*w+vec2(1.7,9.2)+t*.3),fbm(q+3.*w+vec2(8.3,2.8)-t*.25));
+  float f=fbm(q+3.*w2);
+  vec3 c=mix(vec3(.01,.06,.04),vec3(.06,.5,.24),smoothstep(.2,.7,f));
+  c=mix(c,vec3(.95,.72,.22),smoothstep(.5,.95,length(w2))*f*1.5);
+  c=mix(c,vec3(.3,.08,.45),smoothstep(.6,.2,f)*.7*w.x);
+  return c*1.2;
+}
+/* 3 Alcohol: last call */
+vec3 wAl(vec2 p,float t){
+  p.x+=.1*sin(p.y*2.+t*.9); p.y+=.05*sin(p.x*3.-t*.7);
+  float f=fbm(vec2(p.x*1.5,p.y*.8-t*.12)+fbm(p*2.+t*.1));
+  vec3 c=mix(vec3(.1,.01,.05),vec3(.4,.04,.17),smoothstep(-.9,.9,p.y+f*.5));
+  for(int i=0;i<2;i++){
+    float fi=float(i);
+    vec2 g=p*(1.6+fi)+vec2(fi*5.,t*.03);
+    vec2 id=floor(g),f2=fract(g)-.5;
+    float h=hash(id+fi*7.),d=length(f2-(vec2(hash(id+3.),hash(id+5.))-.5)*.5);
+    c+=step(.55,h)*smoothstep(.2,.15,d)*mix(vec3(1.,.15,.2),vec3(.2,.5,1.),step(.8,h))*.16*smoothstep(-.2,.6,p.y);
+  }
+  float lvl=.14*sin(p.x*1.8+t*.8)+.05*sin(p.x*4.3-t*1.3)+.22*sin(t*.5)-.1;
+  float liq=smoothstep(.015,-.015,p.y-lvl);
+  vec3 amber=mix(vec3(.42,.13,.02),vec3(1.,.6,.12),clamp(f+.35*(p.y-lvl+1.2),0.,1.));
+  c=mix(c,amber,liq*.92);
+  c+=exp(-abs(p.y-lvl)*45.)*vec3(1.,.85,.5)*.8;
+  for(int i=0;i<2;i++){
+    float fi=float(i);
+    vec2 g=vec2(p.x*(5.+fi*3.),p.y*(5.+fi*3.)-t*(.6+fi*.4));
+    vec2 id=floor(g),f2=fract(g)-.5;
+    float h=hash(id+fi*9.),rr=.08+.2*h;
+    float d=length(f2-(vec2(hash(id+3.1),hash(id+7.7))-.5)*.5);
+    c+=liq*step(.6,h)*smoothstep(.035,0.,abs(d-rr))*vec3(1.,.85,.55)*.5;
+  }
+  return c;
+}
+/* 4 Ketamine: the corridor */
+vec3 wKt(vec2 p,float t){
+  t=floor(t*9.)/9.;
+  p*=rot(.18*sin(t*.2));
+  float y=abs(p.y)+.07,z=1./y;
+  vec2 g=vec2(p.x*z,z+t*1.1);
+  vec2 gl=abs(fract(g)-.5);
+  float w=max(fwidth(g.x),fwidth(g.y))*1.2+.02;
+  float line=1.-smoothstep(0.,w,min(gl.x,gl.y));
+  float fog=exp(-z*.2);
+  vec3 c=vec3(.005,.035,.05)+line*fog*vec3(.45,.95,.92);
+  c+=(1.-fog)*vec3(.5,.85,.85)*.3*smoothstep(.45,0.,abs(p.y));
+  float r=length(p);
+  c=mix(c,vec3(0.),smoothstep(.24,.2,r));
+  c+=exp(-abs(r-.22)*34.)*vec3(.85,1.,1.);
+  c+=exp(-r*3.)*vec3(.1,.3,.3)*step(.22,r);
+  return c;
+}
+/* 5 Caffeine: nine a.m. */
+vec3 wCf(vec2 p,float t){
+  float r=length(p),a=atan(p.y,p.x);
+  float rays=pow(.5+.5*sin(a*18.+t*.5),6.);
+  vec3 tb=mix(vec3(.13,.06,.01),vec3(1.,.82,.02),rays*.9);
+  tb*=1.-.4*smoothstep(1.,2.,r);
+  float jit=sin(t*43.)*.004;
+  float rip=.5+.5*sin((r+jit)*72.-t*11.);
+  vec3 cof=mix(vec3(.09,.04,.01),vec3(.36,.17,.05),rip*smoothstep(.75,0.,r)*.8+.1);
+  float sw=fbm(vec2(a*2.+t*.5,r*6.-t*.3)+p*2.);
+  cof=mix(cof,vec3(.95,.8,.55),smoothstep(.62,.85,sw)*.45);
+  vec3 c=mix(cof,vec3(1.,.96,.86),smoothstep(.735,.755,r));
+  c=mix(c,tb,smoothstep(.83,.85,r));
+  c*=1.-.5*exp(-max(r-.85,0.)*9.)*step(.85,r);
+  return c;
+}
+/* 6 Nicotine: the ember */
+vec3 wNc(vec2 p,float t,float e){
+  vec2 q=p; q.y-=t*.12; q.x+=.3*sin(p.y*1.5+t*.3);
+  float f=fbm(q*1.8+1.5*vec2(fbm(q*1.2+t*.1),fbm(q*1.2+4.)));
+  float fil=pow(1.-abs(f*2.-1.),7.);
+  vec3 c=vec3(.02,.025,.035)+fil*vec3(.4,.48,.6)*.9+f*f*vec3(.08,.1,.14);
+  float d=length(p-uPlayer);
+  c+=e*exp(-d*d*5.)*vec3(1.,.36,.05)*1.2;
+  c+=e*fil*exp(-d*1.8)*vec3(1.,.45,.1)*.9;
+  return c;
+}
+/* 7 Cocaine: the mirror */
+vec3 wCo(vec2 p,float t){
+  vec2 g=rot(.3)*p*3.;
+  vec2 id=floor(g),f=fract(g);
+  float md=8.,md2=8.; vec2 mid=vec2(0.);
+  for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){
+    vec2 of=vec2(float(x),float(y));
+    vec2 h=vec2(hash(id+of),hash(id+of+31.7));
+    h=.5+.45*sin(t*.6+6.28318*h);
+    float d=length(of+h-f);
+    if(d<md){ md2=md; md=d; mid=id+of; } else if(d<md2){ md2=d; }
+  }
+  float edge=smoothstep(0.,.05,md2-md);
+  float fac=hash(mid);
+  float fl=pow(.5+.5*sin(t*(1.5+fac*5.)+fac*40.),14.);
+  vec3 c=mix(vec3(.01,.02,.04),vec3(.5,.78,.95),fac*fac*.4)+fl*vec3(.9);
+  c=c*edge+(1.-edge)*vec3(.9,.97,1.);
+  float a=atan(p.y,p.x),r=length(p);
+  float sl=pow(hash(vec2(floor(a*40.),3.)),9.);
+  c+=sl*smoothstep(.2,1.4,r)*(.5+.5*sin(r*12.-t*30.+a*5.))*vec3(.8,.95,1.);
+  return c;
+}
+/* 8 Adderall: the grid */
+vec3 wAd(vec2 p,float t){
+  vec2 g=p*8.;
+  vec2 f=abs(fract(g)-.5);
+  float line=1.-smoothstep(0.,.04,min(f.x,f.y));
+  float dotp=smoothstep(.1,.05,length(f));
+  vec2 id=floor(g+.5),lc=abs(fract(g+.5)-.5);
+  float cell=step(.86,hash(id+floor(t*.7)))*smoothstep(.42,.34,max(lc.x,lc.y));
+  vec3 c=vec3(.005,.015,.08)+line*vec3(.1,.25,1.)*.7+dotp*vec3(.4,.6,1.)+cell*vec3(1.,.48,.08)*.3;
+  float d=length(p-uPlayer);
+  c*=.1+1.7*exp(-d*d*2.2);
+  return c;
+}
+/* 9 Dexedrine: the thread */
+vec3 wDx(vec2 p,float t,float s){
+  float th=.30*sin(p.x*1.3+t*.8)+.13*sin(p.x*3.1-t*1.3);
+  vec3 c=vec3(.03,.025,.03);
+  for(int i=0;i<9;i++){
+    float fi=float(i)-4.;
+    float d=abs(p.y-th-fi*.2*(1.+.15*sin(p.x*.8+t*.3)));
+    float m=(i==4)?1.+1.5*s:.2;
+    c+=m*vec3(1.,.2,.14)*(.005/(d+.005));
+    c+=m*vec3(1.,.92,.85)*smoothstep(.007,0.,d);
+  }
+  return c;
+}
+/* 10 Xanax: the quiet */
+vec3 wXn(vec2 p,float t){
+  t*=.2;
+  float f=fbm(p*.7+vec2(t,-t*.6)),g=fbm(p*.5-vec2(t*.7,t*.3)+4.);
+  vec3 c=mix(vec3(.55,.52,.95),vec3(1.,.78,.72),smoothstep(.3,.7,f));
+  c=mix(c,vec3(.7,.84,.95),smoothstep(.4,.8,g)*.7);
+  return c*(.38+.3*f);
+}
+/* 11 2C-B: neon geometry */
+vec3 wCb(vec2 p,float t){
+  p*=rot(t*.05); vec2 g=p*3.6;
+  vec2 s=vec2(1.,1.7320508);
+  vec2 a=mod(g,s)-s*.5,b=mod(g-s*.5,s)-s*.5;
+  vec2 h=dot(a,a)<dot(b,b)?a:b; vec2 id=g-h;
+  float hd=max(dot(abs(h),s*.5),abs(h.x));
+  float hh=hash(id);
+  float rings=sin(hd*40.-t*4.+hh*6.28318);
+  float edge=smoothstep(.5,.46,hd);
+  float sel=fract(hh*3.+t*.08);
+  vec3 col=sel<.333?vec3(1.,0.,.78):(sel<.666?vec3(.78,1.,0.):vec3(0.,.95,1.));
+  vec3 c=col*smoothstep(-.1,.1,rings)*.6*edge+(1.-edge)*vec3(1.);
+  c*=.55+.45*sin(length(p)*5.-t*2.);
+  return c;
+}
+/* 12 4-MMC: the wave */
+vec3 wMm(vec2 p,float t,float w){
+  float d1=length(p-vec2(-.9,0.)),d2=length(p-vec2(.9,0.));
+  float iw=sin(d1*26.-t*9.)+sin(d2*26.-t*9.);
+  float band=smoothstep(0.,.25,abs(iw)-.6);
+  vec3 c=mix(vec3(0.,.9,1.),vec3(.5,.15,1.),.5+.5*sin(p.x*2.+t*.7))*(1.-band)*.85;
+  float fx=(w*2.2-1.1)*uRes.x/uRes.y;
+  c+=exp(-pow((p.x-fx)*2.5,2.))*vec3(.8,1.,1.)*1.2;
+  c+=vec3(.02,0.,.09);
+  return c*(.75+.45*uBeat);
+}
+/* 13 DMT: the breakthrough */
+vec3 wDm(vec2 p,float t){
+  float r=length(p)+1e-4,a=atan(p.y,p.x);
+  float z=log(r)*1.6-t*1.4;
+  float n=8.;
+  vec2 g=vec2(a*n/6.28318+sin(z*2.)*.5,z*2.);
+  vec2 f=fract(g)-.5,id=floor(g);
+  float pet=length(f*vec2(1.,1.3));
+  float h=hash(vec2(mod(id.x,n),id.y));
+  vec3 c=pal(h+z*.15+t*.2,vec3(.5),vec3(.5),vec3(1.,1.,.9),vec3(0.,.15,.55));
+  c=pow(c,vec3(1.5))*smoothstep(.5,.2,pet)*1.4;
+  c+=smoothstep(.06,0.,abs(pet-.38))*vec3(1.,.88,.55);
+  c*=.6+.4*sin(z*6.+a*n);
+  return mix(c,vec3(1.),exp(-r*r*12.));
+}
+vec3 world(int m,vec2 p,float t,float aux){
+  if(m==0)return wMd(p,t);
+  if(m==1)return wPs(p,t);
+  if(m==2)return wCn(p,t);
+  if(m==3)return wAl(p,t);
+  if(m==4)return wKt(p,t);
+  if(m==5)return wCf(p,t);
+  if(m==6)return wNc(p,t,aux);
+  if(m==7)return wCo(p,t);
+  if(m==8)return wAd(p,t);
+  if(m==9)return wDx(p,t,aux);
+  if(m==10)return wXn(p,t);
+  if(m==11)return wCb(p,t);
+  if(m==12)return wMm(p,t,aux);
+  return wDm(p,t);
+}
+/* the night, and the morning made of what you carried */
+vec3 skyc(vec2 p,float t,float d){
+  vec3 c=mix(vec3(.02,.012,.06),vec3(.08,.03,.17),smoothstep(.9,-.5,p.y));
+  vec2 g=p*14.; vec2 id=floor(g),f=fract(g)-.5; float h=hash(id);
+  float st=smoothstep(.09*h,0.,length(f-(vec2(hash(id+1.),hash(id+2.))-.5)*.7))*step(.72,h);
+  c+=st*(.5+.5*sin(t*(1.+h*3.)+h*30.))*(1.-d)*vec3(.9,.9,1.);
+  for(int i=0;i<5;i++){
+    if(i>=uShardN)break;
+    float fi=float(i);
+    float w=fbm(vec2(p.x*1.1+fi*3.7+t*.05,t*.04+fi));
+    float ya=.2+fi*.15+.3*(w-.5);
+    float aur=exp(-pow((p.y-ya)*6.,2.))*(.35+.65*fbm(vec2(p.x*6.+fi*9.,t*.3)))*(1.-d)*.6;
+    c+=uShard[i]*aur;
+    float on=smoothstep(fi*.12,fi*.12+.3,d);
+    float yb=-.3+(fi+.6)*.25;
+    float band=exp(-pow((p.y-yb-.06*sin(p.x*1.4+t*.15+fi*2.))*3.2,2.))*on;
+    c=mix(c,uShard[i],band*.85);
+  }
+  float rise=smoothstep(.5,1.,d);
+  vec2 sp=vec2(0.,-.62+.62*rise);
+  float sd=length(p-sp);
+  c+=exp(-sd*2.)*vec3(1.,.72,.45)*rise*1.2;
+  float a=atan(p.y-sp.y,p.x-sp.x);
+  c+=pow(.5+.5*sin(a*12.+t*.15),5.)*exp(-sd*1.1)*vec3(1.,.9,.7)*.35*rise;
+  return c+smoothstep(.17,.16,sd)*rise*vec3(2.6,2.4,1.9);
+}
+vec3 wSky(vec2 p,float t,float d){
+  float hz=-.38;
+  if(p.y>hz) return skyc(p,t,d)+exp(-abs(p.y-hz)*30.)*vec3(.5,.45,.8)*.22*(1.-d);
+  vec2 q=vec2(p.x+.02*sin(p.y*50.+t*1.5)+.01*sin(p.y*120.-t*2.),2.*hz-p.y);
+  return skyc(q,t,d)*(.5+.25*d)*(.65+.35*smoothstep(-1.,hz,p.y));
+}
+void main(){
+  vec2 uv=gl_FragCoord.xy/uRes;
+  float asp=uRes.x/uRes.y;
+  vec2 p=uv*2.-1.; p.x*=asp;
+  vec2 wp=p+uWob*.05*vec2(sin(p.y*3.+uG*1.3),cos(p.x*2.5+uG*1.1));
+  vec3 col=wSky(p,uG,uDawn);
+  if(uK>.002){
+    vec3 a=world(uMA,wp,uT,uAuxA);
+    if(uMB>=0){
+      vec3 b=world(uMB,wp,uT,uAuxB);
+      float m=smoothstep(.36,.64,fbm(wp*1.3+vec2(uG*.12,-uG*.09))+.14*sin(uG*.3));
+      a=mix(a,b,m);
+    }
+    col=mix(col,a,uK);
+  }
+  vec2 suv=uv+(wp-p)*vec2(.5/asp,.5);
+  vec2 ca=(uv-.5)*uCA+vec2(uDbl,0.);
+  vec3 s=vec3(texture(uFb,suv+ca).r,texture(uFb,suv).g,texture(uFb,suv-ca).b);
+  vec3 bl=textureLod(uFb,suv,2.5).rgb*.5+textureLod(uFb,suv,4.5).rgb*.45+textureLod(uFb,suv,6.5).rgb*.35;
+  col=col*(1.-.55*clamp(max(s.r,max(s.g,s.b)),0.,1.))+s*1.15+bl*uBloom;
+  float l=dot(col,vec3(.299,.587,.114));
+  col=mix(vec3(l),col,uSat);
+  col*=1.-uVig*smoothstep(.35,1.3,length(p-uVc));
+  col*=1.-uScan*.3*(.5+.5*sin(gl_FragCoord.y*2.2));
+  col+=(hash(gl_FragCoord.xy+fract(uG)*91.)-.5)*uGrain;
+  col=mix(col,vec3(0.),uBlack)+uFlash;
+  col=1.-exp(-max(col,0.)*1.6);
+  o=vec4(col,1.);
+}`;
+
+/* ---------- the story: edit freely. every line of text in the game lives here ---------- */
+const SC = {
+  maj:[0,2,4,5,7,9,11], lyd:[0,2,4,6,7,9,11], mix:[0,2,4,5,7,9,10], dor:[0,2,3,5,7,9,10],
+  min:[0,2,3,5,7,8,10], phr:[0,1,3,5,7,8,10], pen:[0,2,4,7,9], whole:[0,2,4,6,8,10]
+};
+const SUBS = [
+{ id:'md', code:'Md', name:'MDMA', place:'The Warm Room', cls:'emp', a:'#ff2e93', b:'#ffc94d',
+  dur:34, cost:.40, tide:.35, need:22, hint:'Everything comes to you.',
+  lines:['Someone handed me water and I loved them for it.','Every person in the room was the best person I had ever met. I told them so.','Tuesday came for all of it.'],
+  lesson:'The love was real. I could have said it sober.',
+  phys:{k:38,d:9}, vis:{decay:.95,zoom:.003,flow:.006,ca:.006,bloom:1.4,sat:1.2},
+  mus:{bpm:124,root:54,sc:SC.lyd,prog:[0,4,5,3],k:'x...x...x...x...',h:'..x...x...x...x.',s:'....x.......x...',bass:'..x...x...x...x.',
+    arp:{ins:'pluck',wave:'sawtooth',step:1,dens:.9,mode:'up',oct:1,vel:.13,cut:3800,dur:.16},pad:{wave:'sawtooth',cut:1500,vel:.07},sfx:'bell'} },
+{ id:'ps', code:'Ps', name:'Mushrooms / LSD', place:'The Garden', cls:'psy', a:'#a855ff', b:'#b6ff3c',
+  dur:36, cost:.24, tide:.1, need:40, hint:'What you touch, you touch six times.',
+  lines:['The carpet started breathing before I did.','Everything was connected to everything. It was hilarious, and it was holy.','Eight hours later I was still relearning how doors work.'],
+  lesson:'The world is stranger and kinder than I had been looking at it.',
+  phys:{k:26,d:8}, vis:{decay:.965,rot:.006,zoom:.004,flow:.008,ca:.008,bloom:1.2,sat:1.25},
+  mus:{bpm:92,root:50,sc:SC.mix,prog:[0,6,3,0],k:'x.....x...x.....',h:'x.x.x.x.x.x.x.x.',hv:.25,bass:'x.......x.......',
+    arp:{ins:'bell',step:2,dens:.7,mode:'rnd',oct:1,vel:.13},pad:{wave:'triangle',cut:2200,vel:.11},rev:.5,sfx:'bell'} },
+{ id:'cn', code:'Cn', name:'Cannabis', place:'The Slow Green', cls:'can', a:'#35d07f', b:'#e9b949',
+  dur:32, cost:.12, tide:-.15, need:12, hint:'Slow down. It will wait.',
+  lines:['Time went soft around the edges.','The song had been playing for four minutes, or for my entire life.','I laughed at something. Then I forgot what.'],
+  lesson:'Slow is a place I can visit without smoking.',
+  phys:{k:9,d:4.2}, vis:{decay:.975,flow:.01,dy:.0012,ca:.003,bloom:1.3,sat:1.05,vig:.35},
+  mus:{bpm:74,root:51,sc:SC.dor,prog:[0,3,0,4],k:'x.....x..x......',s:'....x.......x...',h:'x.xxx.x.x.xxx.x.',hv:.3,swing:.22,bass:'x.....x..x......',
+    arp:{ins:'ep',step:4,dens:.65,mode:'rnd',oct:1,vel:.16},pad:{wave:'sine',cut:1200,vel:.15},lp:2600,wob:14,sfx:'ep'} },
+{ id:'al', code:'Al', name:'Alcohol', place:'Last Call', cls:'dep', a:'#ff9a2e', b:'#ff3b5c',
+  dur:32, cost:.24, tide:-.3, need:14, hint:'The first ones are the easy ones.',
+  lines:['The first two were the best two. They always were.','I got louder. I thought that was the same as funnier.','The room kept moving after I stopped.'],
+  lesson:'It lends me tonight and bills me tomorrow.',
+  phys:{k:22,d:3.5}, vis:{decay:.94,flow:.006,wob:.3,ca:.006,sat:1.15},
+  mus:{bpm:100,root:48,sc:SC.mix,prog:[0,3,0,4],k:'x.....x.x.......',s:'....x.......x...',h:'x..x..x..x..x..x',hv:.3,swing:.3,bass:'x...x...x...x...',
+    arp:{ins:'pluck',wave:'square',step:2,dens:.55,mode:'rnd',oct:1,vel:.1,cut:1800,dur:.2},pad:{wave:'triangle',cut:1000,vel:.1},lp:5000,wob:30,sfx:'pluck'} },
+{ id:'kt', code:'Kt', name:'Ketamine', place:'The Corridor', cls:'dis', a:'#7ff3ea', b:'#e8ffff',
+  dur:32, cost:.2, tide:-.25, need:3, hint:'Your body follows. Eventually.',
+  lines:['My hands were a long way down.','I watched myself from the far end of a corridor.','Coming back felt like being poured into a body.'],
+  lesson:'Distance from myself is a view. It is also a place I can get stuck.',
+  phys:{k:14,d:6}, vis:{decay:.9,zoom:-.004,scan:1,ca:.012,sat:.7,vig:.5,grain:.06},
+  mus:{bpm:60,root:46,sc:SC.whole,prog:[0,2,0,4],k:'x...............',
+    arp:{ins:'bell',step:4,dens:.4,mode:'rnd',oct:2,vel:.13},pad:{wave:'sine',cut:600,vel:.22},rev:.8,dly:.5,lp:3000,sfx:'bell'} },
+{ id:'cf', code:'Cf', name:'Caffeine', place:'Nine A.M.', cls:'lite', a:'#ffd60a', b:'#fff3d6',
+  dur:24, cost:.07, tide:.14, need:12, hint:'Keep up.',
+  lines:['The one nobody counts.','Lists. Plans. A better version of me by noon.','By three I was borrowing from four.'],
+  lesson:'Even the small ones are loans.',
+  phys:{k:90,d:16}, vis:{decay:.8,ca:.002,sat:1.2,vig:.15,bloom:.8},
+  mus:{bpm:138,root:55,sc:SC.maj,prog:[0,3,4,0],k:'x.......x.......',h:'x.x.x.x.x.x.x.x.',hv:.35,bass:'x...x...x...x...',
+    arp:{ins:'pluck',wave:'triangle',step:2,dens:.95,mode:'up',oct:1,vel:.2,cut:5000,dur:.1},pad:{wave:'triangle',cut:1400,vel:.05},sfx:'pluck'} },
+{ id:'nc', code:'Nc', name:'Nicotine', place:'The Ember', cls:'lite', a:'#ff6a1a', b:'#9db4c8',
+  dur:24, cost:.06, tide:.08, need:10, hint:'Touch the ember. It fades fast.',
+  lines:['Seven seconds of quiet.','Then the wanting it again, which I mistook for needing a break.','It never took me anywhere. It just kept asking.'],
+  lesson:'Relief from a craving is a different thing from pleasure.',
+  phys:{k:30,d:9}, vis:{decay:.97,dy:.002,flow:.012,sat:.9,vig:.5,bloom:1.2},
+  mus:{bpm:80,root:45,sc:SC.min,prog:[0,0,5,0],k:'x..x............',kv:.5,
+    arp:{ins:'ep',step:8,dens:.6,mode:'rnd',oct:1,vel:.18},pad:{wave:'sawtooth',cut:500,vel:.12},lp:3500,rev:.5,sfx:'ep'} },
+{ id:'co', code:'Co', name:'Cocaine', place:'The Mirror', cls:'stim', a:'#a8e6ff', b:'#ffffff', hard:true,
+  dur:22, cost:.34, tide:.42, need:22, hint:'Each one is worth less than the last.',
+  lines:['I was the most interesting person alive for twenty minutes.','Each line did a little less and asked a little more.','The sun came up on a conversation nobody would remember.'],
+  lesson:'Confidence that needs refilling every twenty minutes is a debt.',
+  phys:{k:60,d:14}, vis:{decay:.82,ca:.012,sat:.85,vig:.35,bloom:.9,grain:.05},
+  mus:{bpm:128,root:47,sc:SC.phr,prog:[0,1,0,1],k:'x..x..x.x..x..x.',h:'xxxxxxxxxxxxxxxx',hv:.3,s:'....x.......x...',bass:'x.xx.x.xx.xx.x.x',riser:true,
+    arp:{ins:'pluck',wave:'square',step:1,dens:.8,mode:'up',oct:2,vel:.08,cut:6000,dur:.07},pad:{wave:'sawtooth',cut:3000,vel:.05},sfx:'pluck'} },
+{ id:'ad', code:'Ad', name:'Adderall', place:'The Grid', cls:'stim', a:'#3d6bff', b:'#ff8a1f',
+  dur:30, cost:.24, tide:.36, need:30, hint:'One thing at a time. In order.',
+  lines:['One thing. Only one thing. Finally.','I organised my whole life in a night and forgot to eat.','At four in the morning I was alphabetising something that did not need it.'],
+  lesson:'Focus is a spotlight. It does not choose what is worth lighting.',
+  phys:{k:70,d:17}, vis:{decay:.86,ca:.002,vig:.5,sat:1.1},
+  mus:{bpm:120,root:52,sc:SC.pen,prog:[0,0,3,3],h:'x...x...x...x...',hv:.5,k:'x.......x.......',kv:.5,
+    arp:{ins:'sine',step:1,dens:1,mode:'seq',seq:[0,2,4,2,5,4,2,4],oct:1,vel:.13,dur:.12},pad:{wave:'triangle',cut:900,vel:.08},sfx:'sine'} },
+{ id:'dx', code:'Dx', name:'Dexedrine', place:'The Thread', cls:'stim', a:'#ff3b2f', b:'#ffe9dc',
+  dur:30, cost:.2, tide:.32, need:18, hint:'Stay on the thread.',
+  lines:['Cleaner. A straight line where the noise used to be.','I could hold the thread for as long as I never looked away.','The line kept going after I was done.'],
+  lesson:'A steady hand is worth more than a fast one.',
+  phys:{k:50,d:13}, vis:{decay:.93,dx:-.004,ca:.003,vig:.3},
+  mus:{bpm:108,root:50,sc:SC.dor,prog:[0,3,4,0],k:'x.......x.......',kv:.6,h:'..x...x...x...x.',hv:.3,bass:'x.......x.....x.',
+    arp:{ins:'pluck',wave:'sawtooth',step:2,dens:.8,mode:'up',oct:0,vel:.12,cut:2200,dur:.25},pad:{wave:'sawtooth',cut:1100,vel:.1},sfx:'pluck'} },
+{ id:'xn', code:'Xn', name:'Xanax', place:'The Quiet', cls:'dep', a:'#b9b4ff', b:'#ffc9b8',
+  dur:34, cost:.2, tide:-.4, need:4, hint:'Nothing here can hurt you.',
+  lines:['The alarm in my chest finally stopped.','Nothing mattered, and that felt like peace.','I am missing a Thursday. I have stopped looking for it.'],
+  lesson:'Quiet I cannot remember is not rest.',
+  phys:{k:12,d:6}, vis:{decay:.97,flow:.004,ca:.001,sat:.7,vig:.2,bloom:1.6,grain:.02},
+  mus:{bpm:56,root:53,sc:SC.maj,prog:[0,3,0,3],
+    arp:{ins:'ep',step:8,dens:.5,mode:'rnd',oct:1,vel:.14},pad:{wave:'sine',cut:700,vel:.22},lp:520,rev:.6,sfx:'ep'} },
+{ id:'cb', code:'2C', name:'2C-B', place:'Neon Geometry', cls:'psy', a:'#ff00c8', b:'#c6ff00',
+  dur:32, cost:.2, tide:.12, need:18, hint:'Your trail gathers too.',
+  lines:['The colours came in on rails.','Everything I touched left a line, and the lines made sense.','I laughed until the geometry let go.'],
+  lesson:'Joy does not have to mean anything.',
+  phys:{k:45,d:9}, vis:{decay:.975,rot:-.004,flow:.002,ca:.01,sat:1.3,vig:.2},
+  mus:{bpm:116,root:57,sc:SC.pen,prog:[0,2,3,0],k:'x..x....x.x.....',s:'....x.......x...',h:'x.xxx.xxx.xxx.xx',hv:.25,bass:'x..x..x...x.x...',
+    arp:{ins:'pluck',wave:'square',step:1,dens:.6,mode:'rnd',oct:1,vel:.1,cut:4500,dur:.09},pad:{wave:'triangle',cut:1600,vel:.06},dly:.4,sfx:'pluck'} },
+{ id:'mm', code:'4M', name:'4-MMC', place:'The Wave', cls:'emp', a:'#00e5ff', b:'#8a3dff',
+  dur:32, cost:.3, tide:.4, need:6, hint:'Each wave is smaller. Fly through AGAIN to bring it back. It costs.',
+  lines:['It came in waves, and every wave said again.','I was not chasing the feeling. I was chasing the start of it.','The bag was empty and the wanting was not.'],
+  lesson:'Wanting more and enjoying it run on different engines.',
+  phys:{k:60,d:11}, vis:{decay:.9,dx:.006,ca:.014,sat:1.2,bloom:1.2},
+  mus:{bpm:140,root:52,sc:SC.min,prog:[0,5,3,4],k:'x...x...x...x...',h:'..x...x...x...x.',bass:'.xxx.xxx.xxx.xxx',
+    arp:{ins:'pluck',wave:'sawtooth',step:1,dens:1,mode:'up',oct:1,vel:.11,cut:5000,dur:.1},pad:{wave:'sawtooth',cut:2000,vel:.07},sfx:'pluck'} },
+{ id:'dm', code:'Dm', name:'DMT', place:'The Breakthrough', cls:'psy', a:'#ffcf3a', b:'#e0115f',
+  dur:22, cost:.15, tide:0, need:30, hint:'Stop steering.',
+  lines:['Three breaths, and the room came apart like a curtain.','There was nothing to steer. There was only letting go.','Fifteen minutes. I have spent years thinking about them.'],
+  lesson:'Some things only open when I stop gripping.',
+  phys:{k:30,d:10}, vis:{decay:.96,zoom:.02,rot:.01,ca:.016,sat:1.35,vig:.1,bloom:1.3},
+  mus:{bpm:170,root:49,sc:SC.whole,prog:[0,1,2,3],riser:true,
+    arp:{ins:'bell',step:1,dens:.9,mode:'up',oct:2,vel:.07},pad:{wave:'sawtooth',cut:4000,vel:.1},rev:.6,sfx:'bell'} }
+];
+const SUB = {}; SUBS.forEach((s,i)=>{ s.i=i; SUB[s.id]=s; });
+
+const HUB_MUS  = {bpm:60,root:50,sc:SC.pen,prog:[0,0,3,3],arp:{ins:'bell',step:4,dens:.3,mode:'rnd',oct:2,vel:.09},pad:{wave:'triangle',cut:900,vel:.15},rev:.7};
+const DAWN_MUS = {bpm:66,root:50,sc:SC.maj,prog:[0,3,4,0],bass:'x...............',arp:{ins:'bell',step:2,dens:.55,mode:'up',oct:2,vel:.1},pad:{wave:'sawtooth',cut:2400,vel:.13},rev:.7};
+
+/* ---------- what happens when two doors open at once ---------- */
+const PAIRS = {
+  'md+ps':{name:'Candy flip',line:'They lifted each other. I have not seen colour like that before or since.',yield:1.5,cost:1.3,int:1.3},
+  'cb+md':{name:'Nexus flip',line:'The geometry got a heartbeat.',yield:1.4,cost:1.3,int:1.2},
+  'kt+md':{name:'Kitty flip',line:'Warm, and very far away, at the same time.',yield:1.2,cost:1.3,int:1.2},
+  'cf+nc':{name:'Coffee and a cigarette',line:'The oldest pairing I know. Small, and it knew its place.',yield:1.35,cost:1,int:1},
+  'al+nc':{name:'The smoke outside the bar',line:'Half the reason I went outside was the conversation.',yield:1.2,cost:1.1,int:1},
+  'al+xn':{name:'Blackout',line:'I have no story for this one. That is the story. This is the pairing that stops people breathing.',yield:0,cost:2,int:1,black:1},
+  'al+co':{name:'Feels like sober',line:'The tide said level. My heart knew better.',yield:1.1,cost:1.8,int:1.1,pound:.5},
+  'al+md':{name:'Blunted',line:'The drink sat on the glow like a wet coat.',yield:.6,cost:1.4,int:.8},
+  'md+mm':{name:'Overdrawn',line:'Two withdrawals from the same account.',yield:1.1,cost:1.8,int:1.2,pound:.4}
+};
+const CLASS_RULES = [
+  [['stim','stim'],{name:'Stacked',line:'More was not more. It was only louder.',yield:.7,cost:1.5,int:1.2,pound:1}],
+  [['stim','lite'],{name:'One more push',line:'A little extra on top of a lot. I felt it in my jaw.',yield:.9,cost:1.2,int:1.1,pound:.4}],
+  [['emp','stim'],{name:'Overdrawn',line:'Two withdrawals from the same account.',yield:1,cost:1.7,int:1.2,pound:.6}],
+  [['stim','dep'],{name:'Tug of war',line:'The tide says level. The well says otherwise.',yield:.8,cost:1.7,int:1}],
+  [['emp','dep'],{name:'Blunted',line:'One of them kept turning the other one down.',yield:.6,cost:1.4,int:.8}],
+  [['dep','dep'],{name:'Sinking',line:'Too far down to see anything.',yield:.2,cost:1.7,int:.7,black:.6}],
+  [['dep','dis'],{name:'Sinking',line:'Too far down to see anything. I should not have been alone.',yield:.3,cost:1.6,int:.7,black:.5}],
+  [['dep','psy'],{name:'The off switch',line:'It turned the colours down. It works. That is the whole trouble with it.',yield:.45,cost:1.2,int:.5,mute:1}],
+  [['can','psy'],{name:'The amplifier',line:'The green turned everything up. Some nights that tipped it over.',yield:1.25,cost:1.1,int:1.5}],
+  [['psy','psy'],{name:'Too many doors',line:'Two infinities do not add. I held on to the floor.',yield:.9,cost:1.3,int:1.7}],
+  [['psy','dis'],{name:'Far out',line:'I went a long way and brought back very little I could say.',yield:1.2,cost:1.3,int:1.5}],
+  [['emp','psy'],{name:'Lifted',line:'They lifted each other.',yield:1.35,cost:1.3,int:1.3}],
+  [['psy','stim'],{name:'Sharp edges',line:'The wonder was there. So was the grinding of my teeth.',yield:.9,cost:1.3,int:1.2,pound:.4}],
+  [['can','dep'],{name:'The spins',line:'The room turned and I turned the other way.',yield:.6,cost:1.3,int:1,spin:1}],
+  [['can','stim'],{name:'Crossed wires',line:'Fast heart, slow thoughts.',yield:.85,cost:1.2,int:1,pound:.4}]
+];
+function comboOf(a,b){
+  const key=[a.id,b.id].sort().join('+');
+  if(PAIRS[key]) return PAIRS[key];
+  for(const [cl,r] of CLASS_RULES)
+    if((cl[0]===a.cls&&cl[1]===b.cls)||(cl[0]===b.cls&&cl[1]===a.cls)) return r;
+  return {name:'Side by side',line:'They mostly ignored each other.',yield:1,cost:1.1,int:1};
+}
+
+const TEXT = {
+  hubDefault:'Choose a door. Choose two to mix them. Carry five lights to morning.',
+  hubDry:'The well is dry and the doors will not open. Hold the light and breathe.',
+  hubEnough:'You are carrying enough. Now come back to level. Hold the light and breathe.',
+  hubReady:'Five lights, a full well, level ground. The morning is yours.',
+  hubPair:(a,b)=>`${a} with ${b}. You find out inside.`,
+  noNew:'You already carry this one. It is never the first time twice.',
+  dry:'The well was dry. The colours did not come.',
+  slipped:'It slipped through my fingers. Some nights do.',
+  ending:(o,c)=>`I opened ${o} ${o===1?'door':'doors'}. I left ${c} closed. They will keep.`
+};
+const WIN = { lights:5, well:.7, tide:.2 };
+
+/* ---------- the house: what each substance does here, the people, the routine. edit freely ---------- */
+const X3 = {
+  md:{load:.55,hab:.04,joy:9,dur:24,pos:[11.5,20.8],day:2,ov:.45,trail:.6,ca:.006,sat:1.4,vig:.25,spd:1.1},
+  ps:{load:.6,hab:.01,joy:9,dur:30,pos:[12.7,20.8],day:2,ov:.6,kal:.45,wob:.6,trail:.8,ca:.008,sat:1.5,zoom:1,spd:.85},
+  cn:{load:.35,hab:.03,joy:5,dur:26,pos:[3.6,.8],day:0,ov:.4,trail:.85,sat:1.1,vig:.35,spd:.6,acc:2.5},
+  al:{load:.4,hab:.06,joy:5,dur:24,pos:[10.8,13.1],day:1,ov:.3,wob:1.3,dbl:.012,trail:.5,ca:.006,spd:.9,acc:4,sway:1},
+  kt:{load:.55,hab:.06,joy:6,dur:22,pos:[15.1,20.8],day:2,ov:.45,scan:1,pix:.5,ca:.012,sat:.55,vig:.5,spd:.6,lag:.6},
+  cf:{load:.12,hab:.02,joy:2,dur:20,pos:[12,.8],day:0,ov:.18,sat:1.2,spd:1.25},
+  nc:{load:.15,hab:.05,joy:2,dur:14,pos:[6.3,5.2],day:0,ov:.3,sat:.85,vig:.45,spd:1},
+  co:{load:.5,hab:.1,joy:7,dur:14,pos:[13.9,20.8],day:2,ov:.4,ca:.012,sat:.8,vig:.45,spd:1.6,acc:30},
+  ad:{load:.35,hab:.06,joy:4,dur:26,pos:[10.4,2.4],day:1,ov:.3,vig:.75,sat:1.1,spd:1.3},
+  dx:{load:.35,hab:.06,joy:4,dur:26,pos:[10.4,3.8],day:1,ov:.3,vig:.4,spd:1.3},
+  xn:{load:.45,hab:.08,joy:3,dur:26,pos:[10.4,1],day:1,ov:.4,trail:.9,sat:.6,vig:.2,spd:.55,acc:2.5},
+  cb:{load:.5,hab:.02,joy:8,dur:24,pos:[16.3,20.8],day:2,ov:.5,kal:.2,trail:.85,ca:.01,sat:1.5,spd:1},
+  mm:{load:.55,hab:.1,joy:7,dur:16,pos:[17.5,20.8],day:2,ov:.45,ca:.014,sat:1.3,spd:1.4},
+  dm:{load:.7,hab:0,joy:9,dur:12,pos:[18.7,20.8],day:2,ov:.85,kal:.8,zoom:2,trail:.9,ca:.016,sat:1.6,spd:.12}
+};
+SUBS.forEach(s=>{ s.x=X3[s.id]; });
+
+const DAYS = ['Thursday','Friday','Saturday','Sunday'];
+const DAYLEN = 130;          // seconds of play from 08:00 to midnight
+const GOALS = [16,24,32,38];   // joy needed each day to keep it
+
+const TASKS = [
+  {id:'work',name:'Do the coursework',x:5.8,z:1.7,day:0,joy:6,kind:'focus',room:'bed',line:'Two pages. They were good pages.'},
+  {id:'guitar',name:'Play guitar',x:1.4,z:4.8,day:0,joy:7,kind:'play',room:'bed',line:'I played the same four chords and meant them.'},
+  {id:'eat',name:'Eat with Mom',x:15.5,z:4.3,day:0,joy:6,kind:'bond',room:'kit',well:.2,line:'She asked about my week. I told her some of it.'},
+  {id:'plant',name:'Water the plant',x:18.7,z:7.25,day:0,joy:3,kind:'care',room:'hall',line:'It had a new leaf.'},
+  {id:'shower',name:'Take a shower',x:8.1,z:1.3,day:1,joy:3,kind:'care',room:'bath',well:.15,line:'Ten minutes of hot water. Nobody could tell after that.'},
+  {id:'tv',name:'Watch the game with Dad',x:5.5,z:11.5,day:1,joy:6,kind:'bond',room:'liv',line:'We yelled at the same referee.'},
+  {id:'hoops',name:'Shoot hoops with Jay',x:4.5,z:18,day:2,joy:8,kind:'play',room:'yard',well:.1,line:'I was out of breath and it felt like mine.'}
+];
+
+const NPCS = [
+  {id:'mom',name:'Mom',col:'#ffb46a',day:0,path:[[13,2.2,3],[17,3,2],[15,4.6,1],[15,7.2,2],[15,4.6,0]],
+    worried:[[15,4.6,0],[15,7.2,0],[6.4,7.2,5],[15,7.2,0]]},
+  {id:'sis',name:'Maya',col:'#b9b4ff',day:0,path:[[2,7.2,2],[5,7.2,0],[5,4.8,2.5],[5,7.2,0],[10,7.2,1],[18,7.2,3],[10,7.2,0]],
+    worried:[[5,7.2,1],[5,4.6,4],[5,7.2,0],[9,7.2,2]]},
+  {id:'dad',name:'Dad',col:'#7fa0c8',day:1,path:[[3,11,4],[8,10.5,3],[6,12.6,5]]},
+  {id:'jay',name:'Jay',col:'#35d07f',day:2,path:[[10,18,4],[7,17.5,3]]}
+];
+
+const SAY = {
+  calm:{mom:['Morning, love.','Eat something, will you?','You sleeping all right?'],sis:['Hey.','Can I borrow your charger?','You are being weird. Normal weird.'],
+        dad:['Game is on later.','Hey, kiddo.'],jay:['You coming out tonight?','I have got everything, if you want it.']},
+  seen:['Your eyes are red.','Are you feeling okay?','You seem far away.','Why are you staring at the wall?'],
+  caught:['What is that? What are you taking?','I saw that.'],
+  worried:['Talk to me. Please.','We are worried about you.','You are not yourself lately.','I can hear you at night.'],
+  lash:['Stop! What is wrong with you?','Do not touch me!'],
+  over:['You are sweating. What did you take?','Why are you telling me all this?'],
+  found:['Mom! Come here. Something is wrong.']
+};
+
+const STORY = {
+  open:'Thursday. I kept it in my room, and I kept it quiet.',
+  days:['','Friday. The rest of the house opened up, and so did the cabinets.','Saturday. Jay texted. Come outside.','Sunday. Whatever I was building, this was the day it showed.'],
+  locked:['','Not today. Friday.','Not yet. Saturday.'],
+  goal:'That was enough for one day. Bed, or a little more.',
+  again:'It was never the first time twice.',
+  flat:'Sober felt flat now. That was new.',
+  limit:'I could feel the edge of it coming.',
+  lash:'I do not remember deciding to do that.',
+  over:'I could not stop talking. I told them everything except the truth.',
+  compulse:'Again. I did not choose it. My hands did.',
+  pace:'I could not sit still. I could not do anything else either.',
+  scramble:'The floor and I disagreed about which way was forward.',
+  blackout:'Then nothing. Then morning, and someone had put a blanket on me.',
+  talk:'I told her. She did not shout. She put the kettle on.',
+  dry:'There was nothing left in me to spend.',
+  dayClear:'A clear day. It was enough on its own.',
+  dayLevel:'A good day. I would call it level.',
+  dayLoud:'I had fun. I got nothing done.',
+  dayLost:'I do not remember all of it. They do.',
+  dayGrey:'I kept everything under control and forgot to enjoy any of it.'
+};
+const ENDINGS = {
+  level:{h:'Level.',t:'I kept my days and I kept my head. I still open a door now and then. I close it behind me. The house is loud with ordinary things, and I am in the middle of them.'},
+  clear:{h:'Clear.',t:'I left every door closed. It turned out the house was enough, and so was I.'},
+  grey:{h:'Careful.',t:'Nothing went wrong. Not much went right, either. Balance is more than staying out of trouble. It also means showing up for the good parts.'},
+  known:{h:'They knew.',t:'They found out before I admitted it to myself. Nobody shouted. They sat on my bed and said they loved me, and that it had to change. That was where getting level began.'},
+  hooked:{h:'It had me.',t:'I stopped choosing somewhere around Saturday. Everything after that was the habit, wearing my clothes. Getting out started with saying so out loud.'}
+};
+
+/* ---------- audio: every note is synthesised live ---------- */
+const AU = { ctx:null, muted:false, cfg:null, step:0, bar:0, next:0, rate:1, wob:0, dens:1, arpI:0, sfxI:0 };
+let aMaster, aMus, aLp, aRev, aDly, aNoise, aTimer;
+
+function auStart(){
+  if(AU.ctx){ AU.ctx.resume(); return; }
+  const C=window.AudioContext||window.webkitAudioContext; if(!C) return;
+  let ctx; try{ ctx=new C(); }catch(e){ return; }
+  AU.ctx=ctx;
+  const comp=ctx.createDynamicsCompressor(); comp.threshold.value=-14; comp.ratio.value=5; comp.connect(ctx.destination);
+  aMaster=ctx.createGain(); aMaster.gain.value=.72; aMaster.connect(comp);
+  aLp=ctx.createBiquadFilter(); aLp.type='lowpass'; aLp.frequency.value=18000; aLp.connect(aMaster);
+  aMus=ctx.createGain(); aMus.gain.value=0; aMus.connect(aLp);
+  const len=ctx.sampleRate*3, ib=ctx.createBuffer(2,len,ctx.sampleRate);
+  for(let c=0;c<2;c++){ const d=ib.getChannelData(c); for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/len,2.6); }
+  aRev=ctx.createConvolver(); aRev.buffer=ib;
+  const rg=ctx.createGain(); rg.gain.value=.55; aRev.connect(rg); rg.connect(aLp);
+  aDly=ctx.createDelay(1.5); aDly.delayTime.value=.375;
+  const fb=ctx.createGain(); fb.gain.value=.42; aDly.connect(fb); fb.connect(aDly);
+  const dg=ctx.createGain(); dg.gain.value=.5; aDly.connect(dg); dg.connect(aLp);
+  const nb=ctx.createBuffer(1,ctx.sampleRate,ctx.sampleRate), nd=nb.getChannelData(0);
+  for(let i=0;i<nd.length;i++) nd[i]=Math.random()*2-1;
+  aNoise=nb;
+  AU.next=ctx.currentTime+.1;
+  aTimer=setInterval(auTick,30);
+}
+function auMute(m){ AU.muted=m; if(aMaster) aMaster.gain.setTargetAtTime(m?0:.72,AU.ctx.currentTime,.05); }
+const mtof=m=>440*Math.pow(2,(m-69)/12);
+function deg(cfg,d){ const n=cfg.sc.length; return cfg.root+cfg.sc[((d%n)+n)%n]+12*Math.floor(d/n); }
+
+function env(g,t,a,peak,dur,rel){
+  g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(peak,t+a);
+  g.gain.setValueAtTime(peak,t+Math.max(a,dur)); g.gain.exponentialRampToValueAtTime(0.0001,t+Math.max(a,dur)+rel);
+}
+function out(node,send,dsend){
+  node.connect(aMus);
+  if(send){ const s=AU.ctx.createGain(); s.gain.value=send; node.connect(s); s.connect(aRev); }
+  if(dsend){ const s=AU.ctx.createGain(); s.gain.value=dsend; node.connect(s); s.connect(aDly); }
+}
+function osc(type,f,t,stop){
+  const o=AU.ctx.createOscillator(); o.type=type; o.frequency.value=f;
+  if(AU.wob) o.detune.value=AU.wob*Math.sin(t*2.1)+AU.wob*.5*Math.sin(t*.7);
+  o.start(t); o.stop(stop); return o;
+}
+function pluck(m,t,vel,o={}){
+  const ctx=AU.ctx, dur=o.dur||.2, f=mtof(m);
+  const os=osc(o.wave||'triangle',f,t,t+dur+.4), lp=ctx.createBiquadFilter(), g=ctx.createGain();
+  lp.type='lowpass'; lp.Q.value=2; lp.frequency.setValueAtTime(o.cut||3000,t); lp.frequency.exponentialRampToValueAtTime(Math.max(200,f),t+dur+.2);
+  g.gain.setValueAtTime(vel,t); g.gain.exponentialRampToValueAtTime(0.0001,t+dur+.3);
+  os.connect(lp); lp.connect(g); out(g,o.rev??.2,o.dly||0);
+}
+function bell(m,t,vel,o={}){
+  const ctx=AU.ctx, f=mtof(m), dur=o.dur||1.6;
+  const car=osc('sine',f,t,t+dur+.1), mod=osc('sine',f*3.51,t,t+dur+.1), mg=ctx.createGain(), g=ctx.createGain();
+  mg.gain.setValueAtTime(f*1.6,t); mg.gain.exponentialRampToValueAtTime(1,t+dur*.6);
+  mod.connect(mg); mg.connect(car.frequency);
+  g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(vel,t+.005); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  car.connect(g); out(g,o.rev??.45,o.dly??.15);
+}
+function ep(m,t,vel,o={}){
+  const ctx=AU.ctx, f=mtof(m), dur=o.dur||1.4;
+  const a=osc('sine',f,t,t+dur+.1), b=osc('triangle',f*2,t,t+dur+.1), bg=ctx.createGain(), g=ctx.createGain(), tr=ctx.createGain(), l=osc('sine',4.5,t,t+dur+.1), lg=ctx.createGain();
+  bg.gain.value=.18; lg.gain.value=.25; l.connect(lg); lg.connect(tr.gain);
+  g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(vel,t+.012); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  a.connect(g); b.connect(bg); bg.connect(g); g.connect(tr); out(tr,o.rev??.4,o.dly||0);
+}
+function sine(m,t,vel,o={}){
+  const g=AU.ctx.createGain(), dur=o.dur||.15; const os=osc('sine',mtof(m),t,t+dur+.2);
+  env(g,t,.004,vel,dur,.12); os.connect(g); out(g,o.rev??.25,o.dly??.2);
+}
+const INS={pluck,bell,ep,sine};
+function pad(notes,t,dur,o){
+  const ctx=AU.ctx;
+  for(const m of notes) for(const dt of [-7,7]){
+    const os=osc(o.wave||'sawtooth',mtof(m),t,t+dur+1.4); os.detune.value+=dt;
+    const lp=ctx.createBiquadFilter(), g=ctx.createGain(); lp.type='lowpass'; lp.frequency.value=o.cut||1200;
+    g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(o.vel||.1,t+dur*.35); g.gain.setValueAtTime(o.vel||.1,t+dur*.8); g.gain.linearRampToValueAtTime(0.0001,t+dur+1.2);
+    os.connect(lp); lp.connect(g); out(g,o.rev??.4,0);
+  }
+}
+function bass(m,t,dur,vel){
+  const ctx=AU.ctx, a=osc('sawtooth',mtof(m),t,t+dur+.1), b=osc('sine',mtof(m),t,t+dur+.1), lp=ctx.createBiquadFilter(), g=ctx.createGain();
+  lp.type='lowpass'; lp.frequency.value=420; env(g,t,.008,vel,dur*.7,.08);
+  a.connect(lp); lp.connect(g); b.connect(g); g.connect(aMus);
+}
+function noise(t,dur,type,f,vel,q,sweep){
+  const ctx=AU.ctx, s=ctx.createBufferSource(), fl=ctx.createBiquadFilter(), g=ctx.createGain();
+  s.buffer=aNoise; s.loop=true; fl.type=type; fl.frequency.setValueAtTime(f,t); fl.Q.value=q||1;
+  if(sweep) fl.frequency.exponentialRampToValueAtTime(sweep,t+dur);
+  g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(vel,t+Math.min(.02,dur*.3)); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  s.connect(fl); fl.connect(g); s.start(t); s.stop(t+dur+.05); return g;
+}
+function kick(t,vel){
+  const ctx=AU.ctx, o=ctx.createOscillator(), g=ctx.createGain();
+  o.frequency.setValueAtTime(140,t); o.frequency.exponentialRampToValueAtTime(42,t+.12);
+  g.gain.setValueAtTime(vel,t); g.gain.exponentialRampToValueAtTime(0.0001,t+.3);
+  o.connect(g); g.connect(aMus); o.start(t); o.stop(t+.35);
+}
+function hat(t,vel){ noise(t,.05,'highpass',7500,vel).connect(aMus); }
+function snare(t,vel){ const g=noise(t,.16,'bandpass',1900,vel,.8); out(g,.25,0); }
+function riser(cfg,t,dur){
+  const ctx=AU.ctx;
+  for(let i=0;i<3;i++){
+    const f=mtof(cfg.root+12*i), o=ctx.createOscillator(), g=ctx.createGain(); o.type='sine';
+    o.frequency.setValueAtTime(f,t); o.frequency.exponentialRampToValueAtTime(f*2,t+dur);
+    g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(.05,t+dur*.5); g.gain.linearRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); out(g,.4,0); o.start(t); o.stop(t+dur+.05);
+  }
+}
+
+function setMusic(cfg){
+  if(!AU.ctx) { AU.cfg=cfg; return; }
+  const t=AU.ctx.currentTime;
+  aMus.gain.cancelScheduledValues(t); aMus.gain.setTargetAtTime(0,t,.12);
+  setTimeout(()=>{
+    AU.cfg=cfg; AU.step=0; AU.bar=0; AU.rate=1; AU.dens=1; AU.wob=cfg?(cfg.wob||0):0; AU.arpI=0;
+    if(!cfg||!AU.ctx) return;
+    const n=AU.ctx.currentTime; AU.next=n+.08;
+    aMus.gain.cancelScheduledValues(n); aMus.gain.setTargetAtTime(1,n,.25);
+    aLp.frequency.setTargetAtTime(cfg.lp||18000,n,.3);
+  },380);
+}
+function auLp(f,tc){ if(AU.ctx) aLp.frequency.setTargetAtTime(f,AU.ctx.currentTime,tc||.2); }
+function auTick(){
+  const ctx=AU.ctx, cfg=AU.cfg; if(!ctx||!cfg||ctx.state!=='running') return;
+  if(AU.next<ctx.currentTime-.3) AU.next=ctx.currentTime+.05;
+  while(AU.next<ctx.currentTime+.14){
+    const s16=60/(cfg.bpm*AU.rate)/4;
+    const sw=(AU.step%2===1&&cfg.swing)?cfg.swing*s16:0;
+    try{ playStep(cfg,AU.step,AU.next+sw,s16); }catch(e){ AU.err=String(e&&e.message); }
+    AU.next+=s16; AU.step++;
+  }
+}
+function playStep(cfg,step,t,s16){
+  const i=step%16; if(i===0&&step>0) AU.bar++;
+  const rootD=cfg.prog[AU.bar%cfg.prog.length];
+  if(i===0){
+    if(cfg.pad) pad([deg(cfg,rootD),deg(cfg,rootD+2),deg(cfg,rootD+4),deg(cfg,rootD+6)],t,s16*16,{...cfg.pad,rev:cfg.rev});
+    if(cfg.riser) riser(cfg,t,s16*32);
+  }
+  if(cfg.k&&cfg.k[i]==='x') kick(t,(cfg.kv||1)*.55);
+  if(cfg.h&&cfg.h[i]==='x') hat(t,(cfg.hv||.4)*.22);
+  if(cfg.s&&cfg.s[i]==='x') snare(t,.2);
+  if(cfg.bass&&cfg.bass[i]==='x') bass(deg(cfg,rootD)-12,t,s16*1.6,.2);
+  const a=cfg.arp;
+  if(a&&i%a.step===0&&Math.random()<a.dens*AU.dens){
+    let d;
+    if(a.mode==='seq') d=rootD+a.seq[(step/a.step)%a.seq.length|0];
+    else if(a.mode==='up') d=rootD+[0,2,4,6,7,4,6,2][AU.arpI++%8];
+    else d=rootD+[0,2,4,6,7,9][Math.random()*6|0];
+    INS[a.ins](deg(cfg,d)+12*(a.oct||0),t,a.vel,{wave:a.wave,cut:a.cut,dur:a.dur,rev:cfg.rev,dly:cfg.dly});
+  }
+}
+
+/* ---------- sound effects ---------- */
+function sfxOK(){ return AU.ctx&&AU.ctx.state==='running'; }
+function sCollect(){
+  if(!sfxOK()) return; const cfg=AU.cfg||HUB_MUS, t=AU.ctx.currentTime;
+  const d=[0,2,4,6,7,9,11,9,7,6,4,2][AU.sfxI++%12];
+  INS[cfg.sfx||'bell'](deg(cfg,d)+12,t,.16,{wave:'triangle',cut:5000,dur:.25,rev:.4,dly:.2});
+}
+function sWhoosh(v=1){ if(!sfxOK()) return; const t=AU.ctx.currentTime; out(noise(t,1.1,'bandpass',300,.3*v,1.2,5000),.5,0); }
+function sBoom(){
+  if(!sfxOK()) return; const ctx=AU.ctx,t=ctx.currentTime,o=ctx.createOscillator(),g=ctx.createGain();
+  o.frequency.setValueAtTime(90,t); o.frequency.exponentialRampToValueAtTime(28,t+.9);
+  g.gain.setValueAtTime(.6,t); g.gain.exponentialRampToValueAtTime(0.0001,t+1.2);
+  o.connect(g); out(g,.4,0); o.start(t); o.stop(t+1.3);
+}
+function sDown(){
+  if(!sfxOK()) return; const ctx=AU.ctx,t=ctx.currentTime,o=ctx.createOscillator(),g=ctx.createGain();
+  o.type='triangle'; o.frequency.setValueAtTime(520,t); o.frequency.exponentialRampToValueAtTime(70,t+2.2);
+  g.gain.setValueAtTime(.12,t); g.gain.exponentialRampToValueAtTime(0.0001,t+2.4);
+  o.connect(g); out(g,.6,.2); o.start(t); o.stop(t+2.5);
+}
+function sShard(){
+  if(!sfxOK()) return; const t=AU.ctx.currentTime;
+  [0,4,7,11,14,19].forEach((s,i)=>bell(62+s,t+i*.09,.14,{dur:2.4,rev:.7,dly:.3}));
+}
+function sBreath(dir,dur=1.2){
+  if(!sfxOK()) return; const t=AU.ctx.currentTime;
+  out(noise(t,dur,'bandpass',dir>0?350:1600,.16,1.5,dir>0?1700:300),.5,0);
+}
+function sTick(){ if(!sfxOK()) return; pluck(86,AU.ctx.currentTime,.05,{dur:.03,cut:8000,rev:.1}); }
+function sSelect(i){ if(!sfxOK()) return; bell(62+[0,2,4,7,9,12,14][i%7],AU.ctx.currentTime,.14,{dur:1.2}); }
+function sBlack(){ if(!sfxOK()) return; const t=AU.ctx.currentTime; aLp.frequency.setTargetAtTime(160,t,.15); aLp.frequency.setTargetAtTime((AU.cfg&&AU.cfg.lp)||18000,t+1.8,.5); }
+function sDawnNote(i){
+  if(!sfxOK()) return; const t=AU.ctx.currentTime, m=50+[0,7,16,14,21][i%5];
+  bell(m,t,.2,{dur:4,rev:.8,dly:.3}); pad([m],t,6,{wave:'sawtooth',cut:1800,vel:.07,rev:.7});
+}
+function sFinal(){
+  if(!sfxOK()) return; const t=AU.ctx.currentTime;
+  pad([38,50,57,62,66,69,76],t,9,{wave:'sawtooth',cut:3200,vel:.08,rev:.8});
+  [0,4,7,12,16,19,24].forEach((s,i)=>bell(62+s,t+i*.16,.14,{dur:5,rev:.8,dly:.3}));
+  sBoom();
+}
+
+/* ---------- post: the house seen through whatever is in your blood ---------- */
+const WORLDS = FRAG_MAIN.slice(FRAG_MAIN.indexOf('float hash'), FRAG_MAIN.indexOf('void main()'));
+const POST_VERT = `in vec3 position;
+void main(){ gl_Position=vec4(position.xy,0.,1.); }`;
+const POST_FRAG = `precision highp float;
+precision highp int;
+out vec4 o;
+uniform sampler2D uScene,uPrev;
+uniform vec2 uRes,uPlayer;
+uniform float uT,uG,uK,uBeat,uAuxA,uAuxB,uDawn,uSky,uMixB;
+uniform int uMA,uMB,uShardN;
+uniform vec3 uShard[5];
+uniform float uCA,uSat,uVig,uWob,uScan,uDbl,uBloom,uBlack,uFlash,uGrain,uKal,uTrail,uPix,uZoom,uRed;
+${WORLDS}
+void main(){
+  vec2 uv=gl_FragCoord.xy/uRes;
+  float asp=uRes.x/uRes.y;
+  vec2 p=uv*2.-1.; p.x*=asp;
+  vec2 q=p+uWob*.035*vec2(sin(p.y*3.+uG*1.3),cos(p.x*2.5+uG*1.1));
+  q*=1.-uZoom*.06*(.5+.5*sin(uG*1.7));
+  if(uKal>.001){
+    float a=atan(q.y,q.x),r=length(q),seg=6.28318/6.;
+    float af=abs(mod(a+uG*.05,seg)-seg*.5)+1.5708-seg*.25;
+    q=mix(q,r*vec2(cos(af),sin(af)),uKal);
+  }
+  vec2 suv=vec2(q.x/asp,q.y)*.5+.5;
+  if(uPix>.001){ vec2 g=uRes/mix(1.,7.,uPix); suv=(floor(suv*g)+.5)/g; }
+  vec2 ca=(suv-.5)*uCA+vec2(uDbl,0.);
+  vec3 sc=vec3(texture(uScene,suv+ca).r,texture(uScene,suv).g,texture(uScene,suv-ca).b);
+  vec3 bl=textureLod(uScene,suv,3.).rgb*.5+textureLod(uScene,suv,5.).rgb*.5;
+  sc+=max(bl-.22,0.)*uBloom;
+  vec3 col=sc;
+  if(uK>.002){
+    vec3 a=world(uMA,q,uT,uAuxA);
+    if(uMB>=0){
+      vec3 b=world(uMB,q,uT,uAuxB);
+      float m=smoothstep(.36,.64,fbm(q*1.3+vec2(uG*.12,-uG*.09))+.14*sin(uG*.3));
+      a=mix(a,b,m*uMixB);
+    }
+    float l=dot(sc,vec3(.3,.6,.1));
+    col=mix(sc,sc*(.4+1.5*a)+a*(.1+.55*l),uK);
+  }
+  if(uSky>.002) col=mix(col,wSky(p,uG,uDawn),uSky);
+  float lum=dot(col,vec3(.299,.587,.114));
+  col=mix(vec3(lum),col,uSat);
+  col=mix(col,vec3(1.,.12,.1)*(lum+.25),uRed);
+  col*=1.-uVig*smoothstep(.35,1.3,length(p-uPlayer));
+  col*=1.-uScan*.3*(.5+.5*sin(gl_FragCoord.y*2.2));
+  col+=(hash(gl_FragCoord.xy+fract(uG)*91.)-.5)*uGrain;
+  col=mix(col,vec3(0.),uBlack)+uFlash;
+  col=1.-exp(-max(col,0.)*1.4);
+  col=max(col,texture(uPrev,uv).rgb*uTrail-.006);
+  o=vec4(col,1.);
+}`;
+const COPY_FRAG = `precision highp float;
+out vec4 o;
+uniform sampler2D uTex; uniform vec2 uRes;
+void main(){ o=vec4(texture(uTex,gl_FragCoord.xy/uRes).rgb,1.); }`;
+
+'use strict';
+/* ---------- helpers ---------- */
+const TAU=Math.PI*2;
+const clamp=(x,a=0,b=1)=>x<a?a:x>b?b:x, lerp=(a,b,t)=>a+(b-a)*t, ease=t=>t*t*(3-2*t);
+const R=(a=1,b)=>b===undefined?Math.random()*a:a+Math.random()*(b-a);
+const pick=a=>a[(Math.random()*a.length)|0];
+const hex3=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)/255);
+const hexN=h=>parseInt(h.slice(1),16);
+const $=s=>document.querySelector(s);
+const REDUCE=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- state ---------- */
+const S={phase:'title',day:0,clock:0,well:1,habit:0,worry:0,joy:0,dayJoy:0,doses:[],dayDoses:0,total:0,taken:{},today:{},done:{},
+  lostToday:0,lost:0,shower:0,talked:false,cool:0,chain:0,stage:0,warned:false,flatSaid:false,blackout:false,order:[],kept:[],goalSaid:false};
+const P={x:3.5,z:3,vx:0,vz:0,face:0,r:.35,walk:0};
+const keys={}; const inputQ=[];
+let C=null, G=0, hold=0, near=null, endKind=null, fade=0, fadeTo=null, yaw=3.68, pitch=-.05, locked=false, sky=null, stars=null, bob=0;
+const V={red:0,flash:0,black:0,sky:0,dawn:0};
+const walls=[], solids=[], gates=[], stations=[], npcs=[], tokens={}, motes=[], lamps={};
+
+/* ---------- three ---------- */
+const cv=$('#gl');
+let renderer,scene,camera,hemi,sun,rtScene,rtA,rtB,postMat,copyMat,postScene,copyScene,ortho,usePost=true,player,pLight,vTmp;
+let RW=2,RH=2,q=1,slow=0;
+function M(color,o={}){ return new THREE.MeshStandardMaterial({color,roughness:o.rough??.85,metalness:0,emissive:o.em??0x000000,emissiveIntensity:o.ei??1}); }
+function box(w,h,d,x,y,z,color,o={}){
+  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),o.basic?new THREE.MeshBasicMaterial({color}):M(color,o));
+  m.position.set(x,y,z); m.castShadow=!o.flat; m.receiveShadow=true; scene.add(m);
+  if(o.solid) solids.push([x-w/2,z-d/2,x+w/2,z+d/2]);
+  return m;
+}
+function wall(x1,z1,x2,z2){
+  const t=.25, hz=Math.abs(z2-z1)<.01;
+  const w=hz?x2-x1:t, d=hz?t:z2-z1, cx=(x1+x2)/2, cz=(z1+z2)/2;
+  box(w,2.7,d,cx,1.35,cz,0x4f4488,{rough:.9});
+  box(w+.03,.06,d+.03,cx,2.73,cz,0xf7f0e3,{basic:true,flat:true});
+  box(w+.04,.07,d+.04,cx,.035,cz,0xff2e93,{basic:true,flat:true});
+  walls.push([cx-w/2,cz-d/2,cx+w/2,cz+d/2]);
+}
+function archShape(w,h){
+  const s=new THREE.Shape(), r=w/2;
+  s.moveTo(-r,0); s.lineTo(-r,h-r); s.absarc(0,h-r,r,Math.PI,0,true); s.lineTo(r,0); s.lineTo(-r,0);
+  return s;
+}
+function doorway(x,z,day){
+  const pm=new THREE.MeshBasicMaterial({color:0xf7f0e3});
+  for(const dx of [-.8,.8]){ const p=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,2,8),pm); p.position.set(x+dx,1,z); scene.add(p); }
+  const a=new THREE.Mesh(new THREE.TorusGeometry(.8,.05,8,24,Math.PI),pm); a.position.set(x,2,z); scene.add(a);
+  if(day){
+    const g=new THREE.Mesh(new THREE.ShapeGeometry(archShape(1.6,2.8),16),new THREE.MeshBasicMaterial({color:0xff6b5d,transparent:true,opacity:.42,side:THREE.DoubleSide,depthWrite:false}));
+    g.position.set(x,0,z); scene.add(g);
+    gates.push({day,mesh:g,box:[x-.8,z-.2,x+.8,z+.2],x,z});
+  }
+}
+function figure(col){
+  const g=new THREE.Group();
+  const body=new THREE.Mesh(new THREE.CylinderGeometry(.24,.32,1.05,14),M(hexN(col),{em:hexN(col),ei:.18,rough:.6}));
+  body.position.y=.6; body.castShadow=true; g.add(body);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.23,18,14),M(0xf7f0e3,{em:0xf7f0e3,ei:.12,rough:.5}));
+  head.position.y=1.42; head.castShadow=true; g.add(head);
+  const nose=new THREE.Mesh(new THREE.BoxGeometry(.1,.08,.14),M(hexN(col),{em:hexN(col),ei:.3}));
+  nose.position.set(0,1.42,.24); g.add(nose);
+  for(const ex of [-.09,.09]){ const e=new THREE.Mesh(new THREE.SphereGeometry(.035,8,6),new THREE.MeshBasicMaterial({color:0x06050c})); e.position.set(ex,1.47,.2); g.add(e); }
+  const mark=new THREE.Mesh(new THREE.OctahedronGeometry(.13),new THREE.MeshBasicMaterial({color:0xff6b5d}));
+  mark.position.y=2.05; mark.visible=false; g.add(mark);
+  scene.add(g);
+  return {g,body,head,mark};
+}
+function ring(x,z,col){
+  const m=new THREE.Mesh(new THREE.RingGeometry(.48,.6,32),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.8,side:THREE.DoubleSide,depthWrite:false}));
+  m.rotation.x=-Math.PI/2; m.position.set(x,.03,z); scene.add(m); return m;
+}
+function lamp(id,x,z,col){
+  const l=new THREE.PointLight(col,1,13,2); l.position.set(x,2.2,z); scene.add(l); lamps[id]=l;
+}
+function buildWorld(){
+  scene=new THREE.Scene(); scene.background=new THREE.Color(0x06050c); scene.fog=new THREE.Fog(0x2a1840,16,70);
+  camera=new THREE.PerspectiveCamera(72,1,.05,260);
+  hemi=new THREE.HemisphereLight(0xaab4ff,0x4a3626,.5); scene.add(hemi);
+  sun=new THREE.DirectionalLight(0xffe2b8,1); sun.position.set(2,20,4); sun.target.position.set(10,0,11);
+  sun.castShadow=true; sun.shadow.mapSize.set(2048,2048);
+  const sc=sun.shadow.camera; sc.left=-17; sc.right=17; sc.top=17; sc.bottom=-17; sc.near=1; sc.far=60; sun.shadow.bias=-.0006;
+  scene.add(sun); scene.add(sun.target);
+  // ground and floors
+  box(90,.1,90,10,-.12,11,0x08070f,{flat:true});
+  const floors=[[0,0,7,6,0x302852],[7,0,11,6,0x1e4450],[11,0,20,6,0x47352a],[0,6,20,8.5,0x272238],[0,8.5,12,14,0x3a3222],[12,8.5,20,14,0x2b2734],[0,14,20,22,0x16361f]];
+  for(const [x1,z1,x2,z2,c] of floors) box(x2-x1,.1,z2-z1,(x1+x2)/2,-.05,(z1+z2)/2,c,{flat:true,rough:.95});
+  // walls
+  wall(0,0,20,0); wall(0,0,0,14); wall(20,0,20,14); wall(0,14,15.2,14); wall(16.8,14,20,14);
+  wall(0,6,4.2,6); wall(5.8,6,8.2,6); wall(9.8,6,14.2,6); wall(15.8,6,20,6);
+  wall(0,8.5,5.2,8.5); wall(6.8,8.5,15.2,8.5); wall(16.8,8.5,20,8.5);
+  wall(7,0,7,6); wall(11,0,11,6); wall(12,8.5,12,14);
+  doorway(5,6); doorway(9,6,1); doorway(15,6); doorway(6,8.5,1); doorway(16,8.5); doorway(16,14,2);
+  // yard fence
+  for(const [x1,z1,x2,z2] of [[0,22,20,22],[0,14,0,22],[20,14,20,22]]){
+    const hz=Math.abs(z2-z1)<.01, w=hz?x2-x1:.12, d=hz?.12:z2-z1;
+    box(w,.6,d,(x1+x2)/2,.3,(z1+z2)/2,0x24382c); walls.push([(x1+x2)/2-w/2-.1,(z1+z2)/2-d/2-.1,(x1+x2)/2+w/2+.1,(z1+z2)/2+d/2+.1]);
+  }
+  // bedroom
+  box(1.6,.45,2.3,1.05,.225,1.45,0x4a3f6b,{solid:true}); box(1.3,.14,.5,1.05,.52,.6,0xd8d0e8);
+  box(1.7,.75,.7,5.8,.375,.55,0x3a2f2a,{solid:true}); box(.7,.45,.06,5.8,1.0,.3,0x8fb8ff,{em:0x5f8fff,ei:.9});
+  box(.26,1.15,.1,.5,.58,4.8,0xb5651d); box(1,.62,.4,3.6,.31,.4,0x35304a,{solid:true}); box(.5,.5,.4,6.5,.25,5.4,0x35304a,{solid:true});
+  box(2.6,.02,1.8,3.6,.012,3.4,0x3a2c55,{flat:true});
+  // bathroom
+  box(1.5,.08,1.5,7.95,.04,.95,0x7fd0e0,{em:0x2f7f90,ei:.5,flat:true}); box(.5,1.1,3.8,10.6,.55,2.4,0x2f3b4a,{solid:true});
+  // kitchen
+  box(8.4,.9,.7,15.6,.45,.5,0x3b3430,{solid:true}); box(1.8,.72,1.1,15.5,.36,3.1,0x5a4636,{solid:true});
+  box(.3,.36,.3,12,1.08,.5,0x16161a);
+  // hall
+  box(.4,.4,.4,19.4,.2,7.25,0x6b4a35); const leaf=new THREE.Mesh(new THREE.SphereGeometry(.42,12,10),M(0x2f9e5b,{em:0x1a6b3a,ei:.3})); leaf.position.set(19.4,.8,7.25); leaf.castShadow=true; scene.add(leaf);
+  // living room
+  box(3,.6,1,5.5,.3,13.2,0x3d4a63,{solid:true}); box(3,.5,.25,5.5,.75,13.6,0x34405a);
+  box(2.2,1.05,.12,5.5,.8,8.78,0x0d0f18,{em:0x3a66ff,ei:.7}); box(1,1,.6,10.8,.5,13.6,0x4a2f2a,{solid:true});
+  box(2.4,.02,1.6,5.5,.012,11.2,0x4a3a22,{flat:true});
+  // entry
+  box(1.4,.02,.8,16,.012,13.2,0x3a3344,{flat:true});
+  // yard
+  const pole=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,3,8),M(0x999999)); pole.position.set(2.4,1.5,18); pole.castShadow=true; scene.add(pole);
+  box(.1,.8,1.2,2.55,2.7,18,0xf7f0e3,{em:0xf7f0e3,ei:.25}); const hoop=new THREE.Mesh(new THREE.TorusGeometry(.25,.03,8,16),M(0xff6a1a,{em:0xff6a1a,ei:.6})); hoop.rotation.x=Math.PI/2; hoop.position.set(2.9,2.45,18); scene.add(hoop);
+  box(8.4,.7,.9,15.1,.35,21.3,0x4a3b2a,{solid:true});
+  // lamps
+  lamp('bed',3.5,3,0xff7ad9); lamp('bath',9,3,0x5fe8ff); lamp('kit',15.5,3,0xffb46a); lamp('hall',10,7.25,0xb9a0ff); lamp('liv',6,11.2,0xffc94d); lamp('yard',10,18,0x4ad6c0); lamp('ent',16,11,0xff8a6a);
+  // the fourteen doors, small enough to hold
+  for(const s of SUBS){
+    const g=new THREE.Group();
+    const geo=new THREE.ExtrudeGeometry(archShape(.44,.7),{depth:.09,bevelEnabled:false}); geo.translate(0,-.35,-.045);
+    const m=new THREE.Mesh(geo,M(hexN(s.a),{em:hexN(s.a),ei:1.1,rough:.4})); g.add(m);
+    const halo=new THREE.Mesh(new THREE.RingGeometry(.3,.36,24),new THREE.MeshBasicMaterial({color:hexN(s.b),transparent:true,opacity:.7,side:THREE.DoubleSide,depthWrite:false}));
+    halo.rotation.x=-Math.PI/2; halo.position.y=-1.2; g.add(halo);
+    g.position.set(s.x.pos[0],1.3,s.x.pos[1]); scene.add(g);
+    tokens[s.id]={g,m,s};
+    stations.push({type:'sub',s,x:s.x.pos[0],z:s.x.pos[1],day:s.x.day,reach:1.7});
+  }
+  const beam=(x,z,col)=>{ const m=new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,2.6,10),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.55,depthWrite:false})); m.position.set(x,1.3,z); scene.add(m); return m; };
+  for(const t of TASKS){ t.ring=ring(t.x,t.z,0xffb46a); t.beam=beam(t.x,t.z,0xffb46a); stations.push({type:'task',t,x:t.x,z:t.z,day:t.day,reach:1.5}); }
+  const bed={type:'bed',x:2.3,z:1.5,day:0,reach:1.5,ring:ring(2.3,1.5,0xf7f0e3),beam:beam(2.3,1.5,0xf7f0e3)}; stations.push(bed); S.bed=bed;
+  sky=new THREE.Mesh(new THREE.SphereGeometry(110,24,16),new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,fog:false,
+    uniforms:{top:{value:new THREE.Color(0x0b0830)},mid:{value:new THREE.Color(0x7a2f8f)},bot:{value:new THREE.Color(0xff8a6a)}},
+    vertexShader:'varying vec3 vP; void main(){ vP=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }',
+    fragmentShader:'uniform vec3 top; uniform vec3 mid; uniform vec3 bot; varying vec3 vP; void main(){ float h=normalize(vP).y; vec3 c=mix(bot,mid,smoothstep(-.02,.22,h)); c=mix(c,top,smoothstep(.15,.75,h)); gl_FragColor=vec4(c,1.); }'}));
+  sky.position.set(10,0,11); scene.add(sky);
+  const sp=new Float32Array(900); for(let i=0;i<300;i++){ const a=R(TAU), e=R(.12,1.5), r=100; sp[i*3]=10+Math.cos(a)*Math.cos(e)*r; sp[i*3+1]=Math.sin(e)*r; sp[i*3+2]=11+Math.sin(a)*Math.cos(e)*r; }
+  const sg=new THREE.BufferGeometry(); sg.setAttribute('position',new THREE.BufferAttribute(sp,3));
+  stars=new THREE.Points(sg,new THREE.PointsMaterial({color:0xffffff,size:2,sizeAttenuation:false,transparent:true,opacity:.8,fog:false,depthWrite:false})); scene.add(stars);
+  // people
+  for(const d of NPCS){
+    const f=figure(d.col), el=document.createElement('div'); el.className='bubble'; $('#bubbles').appendChild(el);
+    npcs.push({d,f,el,x:d.path[0][0],z:d.path[0][1],i:0,wait:1,face:0,sayT:0,cool:R(2,6),knock:null,sees:false});
+  }
+  player=figure('#f7f0e3');
+  pLight=new THREE.PointLight(0xffb46a,.7,7,2); pLight.position.y=1.6; player.g.add(pLight);
+  for(let i=0;i<36;i++){
+    const m=new THREE.Mesh(new THREE.SphereGeometry(.11,10,8),new THREE.MeshBasicMaterial({color:0xffffff})); m.visible=false; scene.add(m);
+    motes.push({m,on:false,x:0,z:0,y:1,ph:R(TAU)});
+  }
+  vTmp=new THREE.Vector3();
+}
+function mkPost(){
+  const U=o=>{ const u={}; for(const k in o) u[k]={value:o[k]}; return u; };
+  postMat=new THREE.RawShaderMaterial({glslVersion:THREE.GLSL3,vertexShader:POST_VERT,fragmentShader:POST_FRAG,depthTest:false,depthWrite:false,
+    uniforms:U({uScene:null,uPrev:null,uRes:new THREE.Vector2(2,2),uPlayer:new THREE.Vector2(0,0),uT:0,uG:0,uK:0,uBeat:0,uAuxA:0,uAuxB:0,uDawn:0,uSky:0,uMixB:1,
+      uMA:0,uMB:-1,uShardN:0,uShard:new Float32Array(15),uCA:.0015,uSat:1,uVig:.28,uWob:0,uScan:0,uDbl:0,uBloom:.9,uBlack:0,uFlash:0,uGrain:.03,uKal:0,uTrail:0,uPix:0,uZoom:0,uRed:0})});
+  copyMat=new THREE.RawShaderMaterial({glslVersion:THREE.GLSL3,vertexShader:POST_VERT,fragmentShader:COPY_FRAG,depthTest:false,depthWrite:false,uniforms:U({uTex:null,uRes:new THREE.Vector2(2,2)})});
+  ortho=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+  postScene=new THREE.Scene(); const a=new THREE.Mesh(new THREE.PlaneGeometry(2,2),postMat); a.frustumCulled=false; postScene.add(a);
+  copyScene=new THREE.Scene(); const b=new THREE.Mesh(new THREE.PlaneGeometry(2,2),copyMat); b.frustumCulled=false; copyScene.add(b);
+}
+function resize(){
+  const w=Math.max(2,cv.clientWidth), h=Math.max(2,cv.clientHeight);
+  const s=Math.min(Math.min(devicePixelRatio||1,2),Math.sqrt(2.0e6/(w*h)))*q;
+  RW=Math.max(2,Math.round(w*s)); RH=Math.max(2,Math.round(h*s));
+  renderer.setPixelRatio(1); renderer.setSize(RW,RH,false);
+  camera.aspect=w/h; camera.updateProjectionMatrix();
+  for(const r of [rtScene,rtA,rtB]) if(r) r.dispose();
+  rtScene=new THREE.WebGLRenderTarget(RW,RH,{minFilter:THREE.LinearMipmapLinearFilter,magFilter:THREE.LinearFilter,generateMipmaps:true});
+  rtA=new THREE.WebGLRenderTarget(RW,RH,{minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter,depthBuffer:false});
+  rtB=new THREE.WebGLRenderTarget(RW,RH,{minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter,depthBuffer:false});
+  postMat.uniforms.uRes.value.set(RW,RH); copyMat.uniforms.uRes.value.set(RW,RH);
+}
+let postChecked=0;
+function render(){
+  if(!usePost){ renderer.setRenderTarget(null); renderer.render(scene,camera); return; }
+  renderer.setRenderTarget(rtScene); renderer.render(scene,camera);
+  postMat.uniforms.uScene.value=rtScene.texture; postMat.uniforms.uPrev.value=rtB.texture;
+  renderer.setRenderTarget(rtA); renderer.render(postScene,ortho);
+  copyMat.uniforms.uTex.value=rtA.texture;
+  renderer.setRenderTarget(null); renderer.render(copyScene,ortho);
+  const t=rtA; rtA=rtB; rtB=t;
+  if(postChecked<3&&++postChecked===3){
+    try{ const pr=renderer.properties.get(postMat), pg=pr&&(pr.currentProgram||pr.program); if(pg&&pg.diagnostics&&pg.diagnostics.runnable===false) usePost=false; }catch(e){}
+  }
+}
+
+/* ---------- collision and sight ---------- */
+function blockers(){ const b=walls.concat(solids); for(const g of gates) if(S.day<g.day) b.push(g.box); return b; }
+let BL=[];
+function resolve(o,r){
+  for(let it=0;it<2;it++) for(const b of BL){
+    const cx=clamp(o.x,b[0],b[2]), cz=clamp(o.z,b[1],b[3]), dx=o.x-cx, dz=o.z-cz, d2=dx*dx+dz*dz;
+    if(d2<r*r){
+      if(d2>1e-8){ const d=Math.sqrt(d2); o.x=cx+dx/d*r; o.z=cz+dz/d*r; }
+      else { const l=o.x-b[0], rr=b[2]-o.x, t=o.z-b[1], bb=b[3]-o.z, m=Math.min(l,rr,t,bb); if(m===l) o.x=b[0]-r; else if(m===rr) o.x=b[2]+r; else if(m===t) o.z=b[1]-r; else o.z=b[3]+r; }
+    }
+  }
+}
+function segBox(ax,az,bx,bz,b){
+  let t0=0,t1=1; const dd=[bx-ax,bz-az], pp=[ax,az];
+  for(let k=0;k<2;k++){
+    const d=dd[k], p=pp[k], mn=b[k], mx=b[k+2];
+    if(Math.abs(d)<1e-9){ if(p<mn||p>mx) return false; }
+    else { let a=(mn-p)/d, c=(mx-p)/d; if(a>c){ const t=a; a=c; c=t; } t0=Math.max(t0,a); t1=Math.min(t1,c); if(t0>t1) return false; }
+  }
+  return true;
+}
+function los(ax,az,bx,bz){
+  for(const b of walls) if(segBox(ax,az,bx,bz,b)) return false;
+  for(const g of gates) if(S.day<g.day&&segBox(ax,az,bx,bz,g.box)) return false;
+  return true;
+}
+const dist=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
+const visibleNpc=(range)=>{ let best=null,bd=range; for(const n of npcs){ if(S.day<n.d.day) continue; const d=dist(n,P); if(d<bd&&los(n.x,n.z,P.x,P.z)){ bd=d; best=n; } } return best; };
+
+/* ---------- the body chemistry ---------- */
+const doseK=d=>ease(clamp(1-d.t/d.dur))*clamp(d.t/2);
+const load=()=>S.doses.reduce((a,d)=>a+d.load*clamp(1-d.t/d.dur),0);
+const limit=()=>1-.45*clamp(S.habit);
+const tells=()=>load()*(S.shower>0?.5:1);
+const stage=()=>S.worry>=66?2:S.worry>=33?1:0;
+const STAGES=['They do not know','They have noticed','They are worried'];
+function dominant(){ let b=null,bv=0; for(const d of S.doses){ const v=d.load*clamp(1-d.t/d.dur); if(v>bv){ bv=v; b=d; } } return b; }
+function addJoy(v){ S.joy=Math.max(0,S.joy+v); S.dayJoy+=v; if(v>0) popGain(v); }
+function takeDose(s,forced){
+  const n=S.today[s.id]||0, tot=S.taken[s.id]||0, dom=dominant();
+  const combo=dom&&dom.s!==s?comboOf(dom.s,s):null;
+  const j=s.x.joy*Math.pow(.6,n)*Math.pow(.88,tot)*(combo?combo.yield:1)*(S.well<.2?.4:1);
+  S.today[s.id]=n+1; S.taken[s.id]=tot+1; S.dayDoses++; S.total++; if(!S.order.includes(s.id)) S.order.push(s.id);
+  S.doses.push({s,t:0,dur:s.x.dur,load:s.x.load*(combo?Math.min(1.6,combo.cost):1),motes:Math.round(j*.6),spawn:0});
+  addJoy(j*.4);
+  S.well=clamp(S.well-s.cost*.5*(combo?combo.cost:1)); S.habit=clamp(S.habit+s.x.hab*(1+n*.5));
+  sWhoosh(); sBoom(); V.flash=.25; musicFor();
+  if(forced) caption(STORY.compulse,4);
+  else if(combo) caption(combo.name+'. '+combo.line,6);
+  else caption(n?STORY.again:(tot?s.lines[1]:s.lines[0]),5);
+  const seer=visibleNpc(7);
+  if(seer&&s.x.load>=.3){ S.worry+=18; say(seer,pick(SAY.caught),3.5); }
+  if(combo&&combo.black) startLoss('blackout');
+}
+let musId='';
+function musicFor(){
+  const d=dominant(), id=d&&doseK(d)>.05?d.s.id:'hub';
+  if(id===musId) return; musId=id; setMusic(id==='hub'?HUB_MUS:d.s.mus);
+}
+
+/* ---------- losing control ---------- */
+function startLoss(type,target){
+  if(C&&C.type==='blackout') return;
+  C={type,target,t:0,hit:false}; S.lostToday++; S.lost++; hold=0;
+  $('#lost').classList.add('on'); sBlack();
+  if(type==='blackout'){ caption(S.well<=0?STORY.dry:STORY.blackout,6); fadeTo=()=>endDay(true); }
+  else caption(STORY[type],5);
+}
+function endLoss(){
+  if(!C) return;
+  if(C.type!=='blackout'){ for(const d of S.doses) d.t+=d.dur*.4; S.well=clamp(S.well-.12); S.cool=7; }
+  C=null; $('#lost').classList.remove('on');
+}
+function checkLoss(){
+  if(S.well<=0){ startLoss('blackout'); return; }
+  const L=load(), lim=limit();
+  $('#hEdge').classList.toggle('on',L>lim*.85&&!C);
+  if(L>lim*.85&&!S.warned){ S.warned=true; caption(STORY.limit,4); }
+  if(L<=lim||S.cool>0) return;
+  const d=dominant(); if(!d) return; const s=d.s;
+  if(s.id==='al'){ const n=visibleNpc(4.5); if(n) startLoss('lash',n); return; }
+  if(s.cls==='emp'){ const n=visibleNpc(7); startLoss(n?'over':'scramble',n); return; }
+  if(s.cls==='stim'||s.cls==='lite'){
+    if(S.chain>=1){ startLoss('blackout'); return; }
+    let best=null,bd=9; for(const id in tokens){ const t=tokens[id].s; if(S.day<t.x.day||(t.cls!=='stim'&&t.cls!=='lite')) continue; const dd=Math.hypot(t.x.pos[0]-P.x,t.x.pos[1]-P.z); if(dd<bd&&los(P.x,P.z,t.x.pos[0],t.x.pos[1])){ bd=dd; best=t; } }
+    S.chain++; startLoss(best?'compulse':'pace',best); return;
+  }
+  if(s.cls==='dep'||s.cls==='dis'){ startLoss('blackout'); return; }
+  startLoss('scramble');
+}
+function autopilot(dt){
+  C.t+=dt; const t=C.type;
+  let tx=0,tz=0,sp=0;
+  if(t==='lash'||t==='over'){
+    const n=C.target, dx=n.x-P.x, dz=n.z-P.z, d=Math.hypot(dx,dz)+1e-6;
+    if(!C.hit){
+      tx=dx/d; tz=dz/d; sp=t==='lash'?5.2:4;
+      if(d<.95){
+        C.hit=true; C.t=0;
+        if(t==='lash'){ n.knock={vx:dx/d*7,vz:dz/d*7,t:.35}; V.red=1; sBoom(); say(n,pick(SAY.lash),4); S.worry+=30; addJoy(-4); for(const o of npcs) if(o!==n&&S.day>=o.d.day&&dist(o,P)<9) say(o,'What happened?!',3); }
+        else { say(n,pick(SAY.over),4.5); S.worry+=18; }
+      }
+    } else if(C.t>(t==='lash'?1.8:3)) return endLoss();
+    if(!C.hit&&C.t>5) return endLoss();
+  } else if(t==='compulse'){
+    const s=C.target, dx=s.x.pos[0]-P.x, dz=s.x.pos[1]-P.z, d=Math.hypot(dx,dz)+1e-6;
+    if(!C.hit){ tx=dx/d; tz=dz/d; sp=5; if(d<1.5){ C.hit=true; C.t=0; takeDose(s,true); } else if(C.t>5) return endLoss(); }
+    else if(C.t>1.2) return endLoss();
+  } else if(t==='pace'){
+    const a=C.t*3.2; tx=Math.cos(a); tz=Math.sin(a); sp=5.5; if(C.t>6.5) return endLoss();
+  } else if(t==='scramble'){
+    const a=2.2*Math.sin(C.t*1.3)+C.t*.9, i=inputDir(); tx=i.x*Math.cos(a)-i.z*Math.sin(a); tz=i.x*Math.sin(a)+i.z*Math.cos(a);
+    if(!i.x&&!i.z){ tx=Math.cos(a*.7)*.5; tz=Math.sin(a*.7)*.5; } sp=3.4; if(C.t>7.5) return endLoss();
+  } else if(t==='blackout'){ fade=clamp(C.t/2.2); if(C.t>2.6&&fadeTo){ const f=fadeTo; fadeTo=null; f(); } return; }
+  P.vx+=(tx*sp-P.vx)*Math.min(1,10*dt); P.vz+=(tz*sp-P.vz)*Math.min(1,10*dt);
+}
+
+/* ---------- people ---------- */
+function say(n,text,dur=3){ n.el.textContent=text; n.el.classList.add('on'); n.sayT=dur; n.cool=dur+R(7,12); }
+function updNpc(n,dt){
+  const act=S.day>=n.d.day; n.f.g.visible=act; if(!act){ n.el.classList.remove('on'); return; }
+  const path=(stage()===2&&n.d.worried)?n.d.worried:n.d.path;
+  if(n.knock){ n.x+=n.knock.vx*dt; n.z+=n.knock.vz*dt; resolve(n,.3); n.knock.t-=dt; if(n.knock.t<=0){ n.knock=null; n.wait=3; } }
+  else if(n.wait>0) n.wait-=dt;
+  else {
+    const w=path[n.i%path.length], dx=w[0]-n.x, dz=w[1]-n.z, d=Math.hypot(dx,dz);
+    if(d<.12){ n.wait=w[2]; n.i=(n.i+1)%path.length; }
+    else { const sp=1.35; n.x+=dx/d*Math.min(d,sp*dt); n.z+=dz/d*Math.min(d,sp*dt); n.face=Math.atan2(dx,dz); }
+  }
+  const d=dist(n,P); n.sees=d<6.5&&los(n.x,n.z,P.x,P.z);
+  if(n.sees&&(n.wait>0||stage()>0)) n.face=Math.atan2(P.x-n.x,P.z-n.z);
+  n.cool-=dt;
+  if(n.sees&&S.phase==='play'&&!C){
+    const tl=tells();
+    if(tl>.2){ S.worry+=tl*7*dt; if(n.cool<=0) say(n,pick(SAY.seen),3); }
+    else if(S.well<.2){ S.worry+=1.5*dt; if(n.cool<=0) say(n,'You look awful. Are you eating?',3); }
+    else if(n.cool<=0&&d<3.2) say(n,stage()===2?pick(SAY.worried):pick(SAY.calm[n.d.id]),3);
+  }
+  if(n.sayT>0){ n.sayT-=dt; if(n.sayT<=0) n.el.classList.remove('on'); }
+  n.f.g.position.set(n.x,Math.abs(Math.sin(G*6+n.x))*(n.wait>0?0:.04),n.z); n.f.g.rotation.y=n.face;
+  n.f.mark.visible=stage()===2; n.f.mark.rotation.y=G*2;
+  if(n.el.classList.contains('on')) place(n.el,n.x,2.3,n.z);
+}
+function place(el,x,y,z){
+  vTmp.set(x,y,z).project(camera);
+  el.style.visibility=vTmp.z>1?'hidden':'visible';
+  el.style.left=((vTmp.x*.5+.5)*100)+'%'; el.style.top=((-vTmp.y*.5+.5)*100)+'%';
+}
+
+/* ---------- acting on the world ---------- */
+function taskMult(t){
+  const d=dominant(), L=load(); let m=1, slow=1;
+  if(L<.1){ if(S.habit>.5){ m=.7; if(!S.flatSaid){ S.flatSaid=true; setTimeout(()=>caption(STORY.flat,4),2600); } } }
+  else if(d){
+    const c=d.s.cls, id=d.s.id;
+    if(t.kind==='play'&&(c==='can'||c==='psy')) m=1.5;
+    else if(t.kind==='bond'&&(id==='al'||c==='emp')&&L<limit()*.8) m=1.4;
+    else if(t.kind==='focus'&&(c==='stim'||c==='lite')) m=1.5;
+    else if(t.kind==='focus'&&(c==='dep'||c==='can'||c==='psy'||c==='dis')) m=.5;
+    if(c==='stim'||c==='lite') slow=.5; else if(c==='can'||c==='dep'||c==='dis') slow=1.6;
+  }
+  if(S.well<.2) m*=.5;
+  return {m,slow};
+}
+function doTask(t){
+  const {m}=taskMult(t); S.done[t.id]=true; addJoy(t.joy*m);
+  if(t.well) S.well=clamp(S.well+t.well);
+  if(t.id==='shower') S.shower=30;
+  if(t.kind==='bond'){ if(tells()>.35){ S.worry+=10; caption('They looked at me a second too long.',4); } else { if(load()<.1) S.worry=Math.max(0,S.worry-8); caption(t.line,4.5); } }
+  else caption(t.line,4.5);
+  t.ring.material.opacity=.15; if(lamps[t.room]) lamps[t.room].userData.lit=true;
+  sShard(); V.flash=.12; hudTasks();
+}
+function talk(){ S.talked=true; S.worry=Math.max(0,S.worry-30); S.habit=clamp(S.habit-.08); addJoy(5); caption(STORY.talk,6); sShard(); const m=npcs[0]; say(m,'Thank you for telling me.',4); }
+function findNear(){
+  let best=null,bd=9;
+  for(const st of stations){
+    if(S.day<st.day) continue;
+    if(st.type==='task'&&S.done[st.t.id]) continue;
+    const d=Math.hypot(st.x-P.x,st.z-P.z); if(d<st.reach&&d<bd){ bd=d; best=st; }
+  }
+  const mom=npcs[0];
+  if(S.worry>=40&&!S.talked&&load()<.1&&dist(mom,P)<1.8) best={type:'talk',x:mom.x,z:mom.z};
+  return best;
+}
+function promptFor(st){
+  if(st.type==='sub') return {text:st.s.name,time:.7};
+  if(st.type==='task'){ const k=taskMult(st.t); return {text:st.t.name,time:1.8*k.slow}; }
+  if(st.type==='bed') return {text:'Sleep, and end '+DAYS[S.day],time:1.4};
+  return {text:'Tell her the truth',time:2};
+}
+function act(st){
+  if(st.type==='sub') takeDose(st.s);
+  else if(st.type==='task') doTask(st.t);
+  else if(st.type==='bed') endDay(false);
+  else talk();
+}
+function inputDir(){
+  const fw=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0), st=(keys.KeyD?1:0)-(keys.KeyA?1:0);
+  let x=-Math.sin(yaw)*fw+Math.cos(yaw)*st, z=-Math.cos(yaw)*fw-Math.sin(yaw)*st;
+  const l=Math.hypot(x,z); if(l>1){ x/=l; z/=l; } return {x,z};
+}
+const goalNow=()=>GOALS[S.day];
+function target(){
+  if(S.dayJoy>=goalNow()) return {x:S.bed.x,z:S.bed.z,name:'Your bed'};
+  let best=null,bd=1e9;
+  for(const t of TASKS){ if(S.day<t.day||S.done[t.id]) continue; const d=Math.hypot(t.x-P.x,t.z-P.z)+(los(P.x,P.z,t.x,t.z)?0:6); if(d<bd){ bd=d; best=t; } }
+  return best?{x:best.x,z:best.z,name:best.name}:{x:S.bed.x,z:S.bed.z,name:'Your bed'};
+}
+
+/* ---------- a day ---------- */
+function startDay(d){
+  Object.assign(S,{day:d,clock:0,doses:[],today:{},done:{},dayJoy:0,dayDoses:0,lostToday:0,talked:false,shower:0,chain:0,cool:0,warned:false,goalSaid:false});
+  const bo=S.blackout; S.blackout=false;
+  P.x=bo?(d>=1?9:9):2.4; P.z=bo?(d>=1?4.2:7.2):1.6; P.vx=P.vz=0; C=null; fade=1; fadeTo=null; inputQ.length=0; yaw=bo?R(TAU):3.68; pitch=-.05;
+  $('#lost').classList.remove('on');
+  for(const g of gates) g.mesh.visible=d<g.day;
+  for(const id in tokens) tokens[id].g.visible=d>=tokens[id].s.x.day;
+  for(const t of TASKS){ t.ring.visible=t.beam.visible=d>=t.day; t.ring.material.opacity=.8; }
+  for(const k in lamps) lamps[k].userData.lit=false;
+  S.bed.ring.material.color.setHex(0xf7f0e3);
+  for(const n of npcs){ n.x=n.d.path[0][0]; n.z=n.d.path[0][1]; n.i=0; n.wait=R(1,3); n.knock=null; n.el.classList.remove('on'); }
+  for(const m of motes){ m.on=false; m.m.visible=false; }
+  BL=blockers(); musId=''; musicFor();
+  hudTasks(); S.phase='play'; show('play');
+  setTimeout(()=>caption(d===0?STORY.open:STORY.days[d],6),900);
+}
+function endDay(blackout){
+  if(S.phase!=='play') return;
+  const avail=TASKS.filter(t=>S.day>=t.day), done=avail.filter(t=>S.done[t.id]).length;
+  const met=S.dayJoy>=goalNow(); S.kept[S.day]=met;
+  const balanced=met&&S.lostToday===0, bonus=balanced?Math.round(S.dayJoy*.25):0;
+  const hab0=S.habit;
+  if(S.dayDoses===0){ S.habit=clamp(S.habit-.15); S.worry=Math.max(0,S.worry-12); } else if(S.dayDoses<=2) S.habit=clamp(S.habit-.06);
+  if(blackout){ S.worry+=12; S.blackout=true; }
+  S.joy+=bonus;
+  let v,line;
+  if(S.lostToday>0){ v='Lost.'; line=STORY.dayLost; }
+  else if(S.dayDoses===0&&met){ v='Clear.'; line=STORY.dayClear; }
+  else if(met){ v='Level.'; line=STORY.dayLevel; }
+  else if(S.dayDoses>0){ v='Loud.'; line=STORY.dayLoud; }
+  else { v='Grey.'; line=STORY.dayGrey; }
+  $('#cEyebrow').textContent=DAYS[S.day]+' night';
+  $('#cBig').textContent=v; $('#cLine').textContent=line;
+  const dh=Math.round((S.habit-hab0)*100);
+  $('#cStats').innerHTML=`<dt>Today's goal</dt><dd>${met?'Kept':'Missed'} · ${Math.round(S.dayJoy)} of ${goalNow()} joy${bonus?` · in-control bonus +${bonus}`:''}</dd><dt>Day to day</dt><dd>${done} of ${avail.length} done</dd><dt>Doors opened</dt><dd>${S.dayDoses}</dd><dt>The habit</dt><dd>${Math.round(S.habit*100)}%${dh<0?' · easing':''}</dd><dt>At home</dt><dd>${STAGES[stage()]}</dd>`;
+  $('#cShards').innerHTML=balanced?`<div class="lesson" style="--c:#ffb46a"><i></i><span><small>Balance</small>Goal kept and never out of control. A quarter again on the day.</span></div>`:(S.dayDoses===0?`<div class="lesson" style="--c:#f7f0e3"><i></i><span><small>A clear day</small>The habit eased and the house relaxed.</span></div>`:'');
+  $('#back').textContent=S.day>=DAYS.length-1?'See where it left me':'Next morning';
+  S.well=clamp((blackout||S.clock>=DAYLEN?.6:1)-.35*S.habit,.2,1);
+  S.doses=[]; setMusic(HUB_MUS); musId='hub'; S.phase='card'; show('card');
+}
+function finish(kind){
+  const kept=S.kept.filter(Boolean).length;
+  endKind=kind||(S.total===0&&kept>=3?'clear':(kept>=3&&S.worry<50&&S.habit<.5?'level':(S.habit>=.5?'hooked':(S.worry>=66?'known':'grey'))));
+  const e=ENDINGS[endKind], good=endKind==='level'||endKind==='clear';
+  $('#dKicker').textContent=good?'Monday morning':'Afterwards';
+  $('#dTitle').textContent=e.h; $('#dText').textContent=e.t;
+  $('#dStats').innerHTML=`<dt>Days kept</dt><dd>${S.kept.filter(Boolean).length} of ${DAYS.length}</dd><dt>Joy</dt><dd>${Math.round(S.joy)}</dd><dt>Doors opened</dt><dd>${S.total} · ${S.order.length} of 14 kinds</dd><dt>The habit</dt><dd>${Math.round(S.habit*100)}%</dd><dt>Times I lost control</dt><dd>${S.lost}</dd>`;
+  $('#dLessons').innerHTML=S.order.slice(0,5).map(id=>{ const s=SUB[id]; return `<div class="lesson" style="--c:${s.a}"><i></i><span><small>${s.name}</small>${s.lesson}</span></div>`; }).join('');
+  const arr=postMat.uniforms.uShard.value, cols=S.order.slice(0,5).map(id=>SUB[id].a); if(!cols.length) cols.push('#ffb46a','#ff6a8a','#b9b4ff');
+  cols.forEach((c,i)=>arr.set(hex3(c),i*3)); postMat.uniforms.uShardN.value=cols.length;
+  S.doses=[]; C=null; $('#lost').classList.remove('on'); V.dawn=0; S.endT=0;
+  if(good){ setMusic(DAWN_MUS); sFinal(); } else { setMusic(HUB_MUS); sDown(); }
+  S.phase='end'; show('dawn'); $('#dEnd').classList.add('on');
+}
+
+/* ---------- hud ---------- */
+function hudTasks(){
+  $('#hTasks').innerHTML=TASKS.filter(t=>S.day>=t.day).map(t=>`<li class="${S.done[t.id]?'done':''}"><i></i>${t.name}</li>`).join('');
+}
+let capTimer=0;
+function caption(txt,dur=5){ const el=$('#tCap'); el.textContent=txt; el.classList.add('on'); clearTimeout(capTimer); capTimer=setTimeout(()=>el.classList.remove('on'),dur*1000); }
+let gainT=0;
+function popGain(v){ const now=performance.now(); if(now-gainT<120) return; gainT=now; const el=$('#tGain'); el.textContent='+'+(Math.round(v*10)/10); el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
+function hud(){
+  const h=8+16*S.clock/DAYLEN, hh=Math.floor(h), mm=Math.floor((h-hh)*60/10)*10;
+  $('#hDay').textContent=`${DAYS[S.day]} · ${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`; $('#hDay').classList.toggle('late',h>=21);
+  $('#hStage').textContent=STAGES[stage()];
+  const g=goalNow(), met=S.dayJoy>=g;
+  $('#hJoy').textContent=Math.round(S.dayJoy); $('#hGoal').textContent='/ '+g;
+  $('#oBar').style.transform=`scaleX(${clamp(S.dayJoy/g)})`; $('#obj').classList.toggle('met',met);
+  if(met&&!S.goalSaid){ S.goalSaid=true; caption(STORY.goal,5); sShard(); S.bed.ring.material.color.setHex(0xffb46a); }
+  $('#oText').textContent=met?'Goal kept. Get to bed before midnight, or stay up for more.':`Reach ${g} joy, then sleep before midnight.`;
+  const tg=target(), dx=tg.x-P.x, dz=tg.z-P.z, dd=Math.hypot(dx,dz);
+  let a=Math.atan2(-dx,-dz)-yaw; a=Math.atan2(Math.sin(a),Math.cos(a));
+  const mk=$('#mark'); mk.style.left=(50-clamp(a/.9,-1,1)*24)+'%'; mk.classList.toggle('edge',Math.abs(a)>.9);
+  $('#mText').textContent=(Math.abs(a)>.9?(a>0?'‹ ':'')+tg.name+(a<0?' ›':''):tg.name)+' · '+Math.round(dd)+' m';
+  [...$('#dGems').children].forEach((el,i)=>{ el.className=S.kept[i]===true?'on':S.kept[i]===false?'off':(i===S.day?'now':''); });
+  const L=load(), lim=limit();
+  $('#mWell').style.transform=`scaleX(${S.well})`;
+  $('#mLoad').style.transform=`scaleX(${clamp(L/1.4)})`; $('#mLoad').classList.toggle('hot',L>lim*.85);
+  $('#mLim').style.left=(lim/1.4*100)+'%';
+  $('#mHab').style.transform=`scaleX(${clamp(S.habit)})`; $('#mHab').classList.toggle('hot',S.habit>.5);
+  $('#mHome').style.transform=`scaleX(${clamp(S.worry/100)})`; $('#mHome').classList.toggle('hot',S.worry>=66);
+  const pr=$('#prompt');
+  if(near&&!C){ const p=promptFor(near); pr.classList.add('on'); $('#pText').textContent='Hold E · '+p.text; $('#pFill').style.transform=`scaleX(${clamp(hold)})`; }
+  else pr.classList.remove('on');
+}
+
+/* ---------- frame ---------- */
+function updPlay(dt){
+  S.clock+=dt; if(S.shower>0) S.shower-=dt; if(S.cool>0) S.cool-=dt;
+  for(const d of S.doses) d.t+=dt;
+  S.doses=S.doses.filter(d=>d.t<d.dur);
+  if(!S.doses.length) S.chain=0;
+  musicFor();
+  // what the body will do
+  let spd=1, acc=12, sway=0, lag=0;
+  for(const d of S.doses){ const k=doseK(d), x=d.s.x; spd*=lerp(1,x.spd,k); acc=Math.min(acc,lerp(12,x.acc||12,k)); if(x.acc>12) acc=lerp(acc,x.acc,k); sway=Math.max(sway,(x.sway||0)*k); lag=Math.max(lag,(x.lag||0)*k); }
+  if(S.well<.2) spd*=.7;
+  const over=load()>limit()*.85;
+  if(over) sway=Math.max(sway,.6);
+  if(C){ autopilot(dt); if(C&&C.type!=='blackout'&&C.type!=='scramble'&&Math.hypot(P.vx,P.vz)>.5){ let a=Math.atan2(-P.vx,-P.vz)-yaw; a=Math.atan2(Math.sin(a),Math.cos(a)); yaw+=a*Math.min(1,6*dt); } }
+  else { yaw+=((keys.ArrowLeft?1:0)-(keys.ArrowRight?1:0))*2.3*dt; if(sway>0) yaw+=Math.sin(G*1.1)*.35*sway*dt; }
+  if(!C&&S.phase==='play'){
+    let i=inputDir();
+    if(lag>.05){ inputQ.push({t:G,x:i.x,z:i.z}); while(inputQ.length>1&&inputQ[1].t<G-lag) inputQ.shift(); i=inputQ[0]; } else inputQ.length=0;
+    let tx=i.x, tz=i.z;
+    if(sway>0){ const m=Math.hypot(tx,tz); tx+=Math.sin(G*1.7)*.7*sway*(m>0?1:.25); tz+=Math.cos(G*1.3)*.5*sway*(m>0?1:.25); }
+    const sp=3.6*spd;
+    P.vx+=(tx*sp-P.vx)*Math.min(1,acc*dt); P.vz+=(tz*sp-P.vz)*Math.min(1,acc*dt);
+  }
+  if(S.phase!=='play') return;
+  P.x+=P.vx*dt; P.z+=P.vz*dt; resolve(P,P.r);
+  for(const g of gates) if(S.day<g.day&&Math.hypot(g.x-P.x,g.z-P.z)<1.1&&!$('#tCap').classList.contains('on')) caption(STORY.locked[g.day],2.5);
+  const v=Math.hypot(P.vx,P.vz); if(v>.2){ P.face=Math.atan2(P.vx,P.vz); P.walk+=v*dt; }
+  // interaction
+  for(const t of TASKS) if(S.done[t.id]) t.beam.visible=false;
+  S.bed.beam.visible=S.dayJoy>=goalNow();
+  near=C?null:findNear();
+  if(near&&(keys.KeyE||keys.Space)){ hold+=dt/promptFor(near).time; if(hold>=1){ hold=0; keys.KeyE=keys.Space=false; act(near); } } else hold=Math.max(0,hold-dt*2);
+  if(S.phase!=='play') return;
+  // lights that only show when something is in your blood
+  for(const d of S.doses){
+    if(d.motes>0&&d.t>1.5){ d.spawn-=dt; if(d.spawn<=0){ d.spawn=.5; const m=motes.find(o=>!o.on); if(m){ for(let k=0;k<8;k++){ const a=R(TAU), r=R(1.6,5), x=P.x+Math.cos(a)*r, z=P.z+Math.sin(a)*r; if(x>.5&&x<19.5&&z>.5&&z<21.5&&los(P.x,P.z,x,z)){ m.on=true; m.x=x; m.z=z; m.life=9; m.m.visible=true; m.m.material.color.setHex(hexN(Math.random()<.5?d.s.a:d.s.b)); d.motes--; break; } } } } }
+  }
+  for(const m of motes) if(m.on){
+    m.life-=dt; m.m.position.set(m.x,1+.25*Math.sin(G*2+m.ph),m.z); m.m.scale.setScalar(1+.3*Math.sin(G*5+m.ph));
+    if(Math.hypot(m.x-P.x,m.z-P.z)<.75){ m.on=false; m.m.visible=false; addJoy(1); sCollect(); }
+    else if(m.life<=0){ m.on=false; m.m.visible=false; }
+  }
+  for(const n of npcs) updNpc(n,dt);
+  // thresholds
+  const st=stage();
+  if(st!==S.stage){ if(st>S.stage) caption(st===1?'They had started to notice.':'Now they were watching me.',4.5); S.stage=st; }
+  if(!C) checkLoss();
+  if(S.worry>=100&&S.phase==='play'){ S.worry=100; for(const n of npcs) if(S.day>=n.d.day) say(n,'We need to talk. Now.',5); if(!fadeTo){ C={type:'blackout',t:0}; $('#lost').classList.remove('on'); fadeTo=()=>finish('known'); } }
+  else if(S.habit>=1&&S.phase==='play'&&!fadeTo){ C={type:'blackout',t:0}; fadeTo=()=>finish('hooked'); }
+  else if(S.clock>=DAYLEN&&S.phase==='play'&&!fadeTo&&!C){ caption('Midnight. I fell asleep where I was standing.',4); endDay(false); }
+  hud();
+}
+function lookNow(dt){
+  const u=postMat.uniforms; let A=null,B=null,ka=0,kb=0;
+  const ev={wob:0,kal:0,trail:0,ca:.0015,dbl:0,scan:0,pix:0,zoom:0,vig:.28,ov:0}; let sat=1;
+  for(const d of S.doses){
+    const k=doseK(d), x=d.s.x, w=k*d.load;
+    if(w>ka){ B=A; kb=ka; A=d; ka=w; } else if(w>kb){ B=d; kb=w; }
+    for(const key in ev) if(x[key]) ev[key]=Math.max(ev[key],x[key]*k*(key==='vig'||key==='ca'?1:(REDUCE?.5:1)));
+    sat+=((x.sat||1)-1)*k;
+  }
+  if(S.phase!=='play'&&S.phase!=='card'){ A=B=null; }
+  const lossT=C&&C.type!=='blackout'?1:0;
+  u.uK.value=A?ev.ov:0; u.uMA.value=A?A.s.i:0; u.uMB.value=B?B.s.i:-1; u.uMixB.value=A&&B?clamp(kb/Math.max(ka,.01)):0;
+  u.uT.value=G; u.uG.value=G; u.uBeat.value=A?Math.exp(-((G*A.s.mus.bpm/60)%1)*5)*(REDUCE?.3:1):0;
+  u.uAuxA.value=A&&A.s.id==='nc'?.5+.5*Math.sin(G*1.5):(A&&A.s.id==='mm'?(G*.35)%1.2:.5); u.uAuxB.value=.5;
+  u.uWob.value=ev.wob+lossT*1.2+(load()>limit()*.85?.5:0); u.uKal.value=ev.kal; u.uTrail.value=Math.max(ev.trail,lossT*.8); u.uCA.value=ev.ca+lossT*.01;
+  u.uDbl.value=ev.dbl*(.6+.4*Math.sin(G*1.7)); u.uScan.value=ev.scan; u.uPix.value=ev.pix*(.5+.5*Math.sin(G*.9)); u.uZoom.value=ev.zoom;
+  u.uVig.value=Math.max(ev.vig,lossT*.6);
+  sat*=lerp(.35,1,clamp(S.well/.4)); if(!A&&S.habit>.5) sat*=.7;
+  u.uSat.value=S.phase==='card'?.5:sat;
+  V.red*=Math.exp(-dt*1.6); V.flash*=Math.exp(-dt*3);
+  if(!C||C.type!=='blackout') fade=Math.max(0,fade-dt*.8);
+  u.uRed.value=V.red; u.uFlash.value=V.flash; u.uBlack.value=Math.max(fade,S.phase==='title'?.3:S.phase==='card'?.5:S.phase==='end'?.2:0); u.uSky.value=V.sky; u.uDawn.value=V.dawn;
+  u.uPlayer.value.set(0,0);
+}
+let camX=10,camY=20,camZ=30;
+function updScene(dt){
+  // sun and lamps follow the clock
+  const t=S.phase==='title'?.82:S.phase==='end'?(endKind==='level'||endKind==='clear'?.05:.9):clamp(S.clock/DAYLEN);
+  const night=ease(clamp((t-.6)/.25)), morn=1-ease(clamp(t/.25));
+  sun.intensity=lerp(1.1,.4,night); sun.color.setRGB(lerp(1,.5,night),lerp(lerp(.93,.8,morn),.6,night),lerp(lerp(.85,.6,morn),1,night));
+  sun.position.set(10+Math.cos(t*Math.PI)*14,16,11-8+Math.sin(t*Math.PI)*4);
+  hemi.intensity=lerp(.5,.34,night);
+  for(const k in lamps){ const l=lamps[k]; const target=(l.userData.lit?1.7:.95)+night*.5; l.intensity+=(target-l.intensity)*Math.min(1,dt*2); }
+  // sky
+  const K=[[0x3b2fa0,0xff7ab8,0xffd08a],[0x1a1250,0xc0308f,0xff6a3a],[0x05041a,0x2a1260,0x7a2f8f]];
+  const seg=t<.6?0:1, f2=seg?clamp((t-.6)/.3):t/.6, U=sky.material.uniforms, names=['top','mid','bot'];
+  for(let i=0;i<3;i++){ const c0=K[seg][i], c1=K[seg+1][i]; U[names[i]].value.setRGB(lerp((c0>>16&255),(c1>>16&255),f2)/255,lerp((c0>>8&255),(c1>>8&255),f2)/255,lerp((c0&255),(c1&255),f2)/255); }
+  scene.fog.color.copy(U.mid.value).multiplyScalar(.45); stars.material.opacity=night*.9;
+  // the player's body
+  const d=dominant(), hi=d?doseK(d):0, fp=S.phase==='play'||S.phase==='card';
+  player.g.position.set(P.x,0,P.z); player.body.visible=player.head.visible=false;
+  if(d&&hi>.05){ pLight.color.setHex(hexN(d.s.a)); pLight.intensity=.8+1.6*hi; }
+  else { pLight.color.setHex(0xffb46a); pLight.intensity=.8; }
+  for(const id in tokens){ const tk=tokens[id]; tk.m.rotation.y=G*.8+tk.s.i; tk.m.position.y=.12*Math.sin(G*1.6+tk.s.i); }
+  for(const tk of TASKS) tk.beam.material.opacity=.4+.2*Math.sin(G*3+tk.x);
+  // camera
+  let fov=46;
+  if(!fp){
+    const a=G*.07, f=Math.min(1,dt*1.2);
+    camX+=(10+Math.cos(a)*27-camX)*f; camY+=((S.phase==='end'?10:17)-camY)*f; camZ+=(11+Math.sin(a)*27-camZ)*f;
+    camera.position.set(camX,camY,camZ); camera.lookAt(10,1,11);
+  } else {
+    const v=Math.hypot(P.vx,P.vz); bob+=v*dt*1.9;
+    const over=load()>limit()*.85?1:0, loss=C&&C.type!=='blackout'?1:0;
+    const roll=(d&&!REDUCE?Math.sin(G*.8)*.06*hi*(d.s.x.wob||d.s.x.kal?2:1):0)+over*Math.sin(G*2.2)*.07+(C&&C.type==='scramble'?Math.sin(C.t*1.7)*.4:0)+loss*Math.sin(G*9)*.03;
+    camera.position.set(P.x,1.52+Math.sin(bob*2)*.035*(v>.3?1:0)-(S.well<.2?.12:0),P.z);
+    camera.rotation.set(pitch+(d&&!REDUCE?Math.sin(G*.6)*.04*hi:0),yaw,roll,'YXZ');
+    camX=P.x; camY=8; camZ=P.z+10;
+    fov=72+(d?hi*(7*Math.sin(G*.6)+(d.s.x.spd>1.2?10:0)):0);
+  }
+  if(Math.abs(camera.fov-fov)>.05){ camera.fov=fov; camera.updateProjectionMatrix(); }
+}
+function show(id){ if(id!=='play'&&document.pointerLockElement){ try{ document.exitPointerLock(); }catch(e){} } document.querySelectorAll('.scr').forEach(el=>el.classList.toggle('on',el.id===id)); }
+let last=0;
+function frame(now){
+  const raw=(now-last)/1000; last=now; const dt=Math.min(.05,Math.max(.001,raw)); G+=dt;
+  if(raw>.034&&raw<.5) slow+=dt; else slow=Math.max(0,slow-dt*.5);
+  if(slow>3&&q>.5){ q*=.8; slow=0; resize(); }
+  if(S.phase==='play') updPlay(dt);
+  else if(S.phase==='end'){ S.endT+=dt; const good=endKind==='level'||endKind==='clear'; V.sky+=((good?.8:.0)-V.sky)*Math.min(1,dt*.5); V.dawn=good?ease(clamp(S.endT/14)):0; for(const n of npcs) n.el.classList.remove('on'); }
+  else if(S.phase==='title'){ V.sky=0; }
+  if(S.phase!=='end') V.sky*=Math.exp(-dt*2);
+  updScene(dt); lookNow(dt); render();
+  requestAnimationFrame(frame);
+}
+
+/* ---------- wiring ---------- */
+function resetAll(){
+  Object.assign(S,{well:1,habit:0,worry:0,joy:0,total:0,taken:{},lost:0,stage:0,flatSaid:false,blackout:false,order:[],kept:[]});
+  V.sky=0; V.dawn=0; $('#dEnd').classList.remove('on'); startDay(0);
+}
+function boot(){
+  if(!window.THREE){ fail('The 3D library did not load. Check the connection and reload.'); return; }
+  try{
+    renderer=new THREE.WebGLRenderer({canvas:cv,antialias:false,powerPreference:'high-performance'});
+    if(!renderer.capabilities.isWebGL2) usePost=false;
+    renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+    buildWorld(); mkPost(); resize(); BL=blockers();
+    for(const n of npcs) n.f.g.visible=false;
+  }catch(e){ fail('Could not start 3D: '+e.message); return; }
+  addEventListener('resize',resize);
+  addEventListener('keydown',e=>{ if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)&&S.phase==='play') e.preventDefault(); if(!e.repeat) keys[e.code]=true; });
+  addEventListener('keyup',e=>{ keys[e.code]=false; });
+  addEventListener('blur',()=>{ for(const k in keys) keys[k]=false; });
+  $('#begin').addEventListener('click',e=>{ e.currentTarget.blur(); auStart(); sWhoosh(); resetAll(); });
+  $('#back').addEventListener('click',e=>{ e.currentTarget.blur(); sSelect(0); if(S.day>=DAYS.length-1) finish(); else startDay(S.day+1); });
+  $('#again').addEventListener('click',e=>{ e.currentTarget.blur(); resetAll(); });
+  $('#snd').addEventListener('click',e=>{ auStart(); auMute(!AU.muted); e.currentTarget.textContent=AU.muted?'Sound off':'Sound on'; e.currentTarget.blur(); });
+  let drag=false;
+  document.addEventListener('pointerlockchange',()=>{ locked=document.pointerLockElement===cv; $('#look').classList.toggle('off',locked); });
+  addEventListener('mousemove',e=>{ if(S.phase!=='play'||!(locked||drag)) return; yaw-=e.movementX*.0024; pitch=clamp(pitch-e.movementY*.0024,-1.1,1.1); });
+  addEventListener('mousedown',e=>{ if(S.phase!=='play'||(e.target.closest&&e.target.closest('button,.prompt'))) return; drag=true; try{ const pr=cv.requestPointerLock(); if(pr&&pr.catch) pr.catch(()=>{}); }catch(_){} });
+  addEventListener('mouseup',()=>{ drag=false; });
+  // touch: drag to walk and turn, press the prompt to act
+  let tid=null,sx0=0,sy0=0;
+  addEventListener('pointerdown',e=>{ if(e.pointerType==='mouse'||S.phase!=='play'||(e.target.closest&&e.target.closest('button,.prompt'))) return; tid=e.pointerId; sx0=e.clientX; sy0=e.clientY; });
+  addEventListener('pointermove',e=>{ if(e.pointerId!==tid) return; const dx=e.clientX-sx0, dy=e.clientY-sy0; keys.ArrowRight=dx>24; keys.ArrowLeft=dx<-24; keys.KeyS=dy>24; keys.KeyW=dy<-24; });
+  addEventListener('pointerup',e=>{ if(e.pointerId===tid){ tid=null; keys.ArrowRight=keys.ArrowLeft=keys.KeyS=keys.KeyW=false; } });
+  const pr=$('#prompt'); pr.addEventListener('pointerdown',e=>{ e.preventDefault(); keys.KeyE=true; }); pr.addEventListener('pointerup',()=>{ keys.KeyE=false; }); pr.addEventListener('pointerleave',()=>{ keys.KeyE=false; });
+  last=performance.now(); requestAnimationFrame(frame);
+}
+function fail(msg){ const el=$('#nogl'); el.hidden=false; el.textContent=msg; }
+addEventListener('error',e=>{ if(S.phase==='title'&&!renderer) fail('Something went wrong starting the game: '+e.message); else console.error(e.message); const el=$('#err'); if(el){ el.hidden=false; el.textContent='Error: '+e.message+' (line '+e.lineno+')'; } });
+window.__h={setYaw(v){ yaw=v; },S,P,takeDose,startDay,endDay,finish,startLoss,load,limit,npcs,get C(){return C;},SUB,TASKS,doTask,updPlay};
+boot();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+<!-- @dsCard group="The night" height=230 subtitle="Default, hover, selected, carried, closed" -->
+<!DOCTYPE html><html><head><meta charset="utf-8"><link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..800;1,6..96,400..800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>*{box-sizing:border-box;margin:0}body{background:var(--ink);color:var(--paper);font:400 14px/1.5 var(--font-mono);padding:var(--space-6)}button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.row{display:flex;gap:var(--space-3);align-items:flex-end}
+.door{position:relative;width:112px;height:168px;border-radius:var(--radius-arch) var(--radius-arch) var(--radius-foot) var(--radius-foot);border:1px solid var(--faint);
+ background:linear-gradient(180deg,color-mix(in srgb,var(--a) 30%,transparent),color-mix(in srgb,var(--b) 8%,transparent) 70%),var(--ink);
+ display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:5px;padding:0 6px 12px;transition:transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s,border-color .35s}
+.n{position:absolute;top:26%;font-size:10px;letter-spacing:.14em;color:var(--dim)}
+.c{font:italic 500 40px/1 var(--font-display)}
+.nm{font-size:9.5px;line-height:1.25;letter-spacing:.1em;text-transform:uppercase;text-align:center;min-height:2.5em;color:var(--dim)}
+.gem{position:absolute;top:12%;width:9px;height:9px;transform:rotate(45deg);border:1px solid var(--faint)}
+.door:hover,.door.hover{transform:translateY(-5px);border-color:var(--a);box-shadow:0 0 46px -8px var(--a)}
+.door.sel{background:linear-gradient(180deg,var(--a),var(--b));color:var(--ink);border-color:var(--a);box-shadow:0 0 60px -6px var(--a);transform:translateY(-5px)}
+.door.sel .n,.door.sel .nm{color:var(--ink)}.door.sel .gem{border-color:var(--ink)}
+.door.has .gem{background:var(--a);border-color:var(--a);box-shadow:0 0 16px 2px var(--a)}
+.door:disabled{opacity:.3;cursor:default;transform:none;box-shadow:none;border-color:var(--faint)}
+</style></head><body><div class="row">
+<button class="door" style="--a:var(--md-a);--b:var(--md-b)"><span class="gem"></span><span class="n">01</span><span class="c">Md</span><span class="nm">MDMA</span></button>
+<button class="door hover" style="--a:var(--ps-a);--b:var(--ps-b)"><span class="gem"></span><span class="n">02</span><span class="c">Ps</span><span class="nm">Mushrooms / LSD</span></button>
+<button class="door sel" style="--a:var(--kt-a);--b:var(--kt-b)"><span class="gem"></span><span class="n">05</span><span class="c">Kt</span><span class="nm">Ketamine</span></button>
+<button class="door has" style="--a:var(--cn-a);--b:var(--cn-b)"><span class="gem"></span><span class="n">03</span><span class="c">Cn</span><span class="nm">Cannabis</span></button>
+<button class="door" disabled style="--a:var(--co-a);--b:var(--co-b)"><span class="gem"></span><span class="n">08</span><span class="c">Co</span><span class="nm">Cocaine</span></button>
+</div></body></html>

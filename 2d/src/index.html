@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fourteen Doors</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..800;1,6..96,400..800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/*CSS*/
+</style>
+</head>
+<body>
+<canvas id="gl" aria-hidden="true"></canvas>
+<main id="ui">
+
+  <section id="title" class="scr on" aria-label="Title">
+    <div class="anchor">
+      <p class="eyebrow">A true story in fourteen rooms</p>
+      <h1>Fourteen <em>Doors</em></h1>
+      <p class="lede">For a few years I opened every door I was offered. Each one led somewhere real, and some of those places were beautiful. This is what I saw inside, what it cost, and how I found level ground.</p>
+      <button id="begin" class="btn solid">Step into the night</button>
+      <p class="fine">Headphones on. Strong colour and motion. A story, and never a guide.</p>
+    </div>
+  </section>
+
+  <section id="hub" class="scr" aria-label="The night">
+    <header class="bar">
+      <span class="mark">Fourteen <em>Doors</em></span>
+      <button id="snd" class="link" aria-pressed="true">Sound on</button>
+    </header>
+    <div id="doors" class="doors"></div>
+    <div class="console">
+      <div class="meter" id="tideBox">
+        <span class="lab">The tide</span>
+        <div class="beam"><i class="zone"></i><i class="mk" id="tideM"></i></div>
+        <span class="val" id="tideV">level</span>
+      </div>
+      <div class="orbwrap">
+        <button id="orb" class="orb" aria-label="Hold to breathe and refill the well"><i class="ring"></i><i class="core"></i></button>
+        <span class="lab">Hold to breathe</span>
+      </div>
+      <div class="meter" id="lightBox">
+        <span class="lab">Lights carried</span>
+        <div class="gems" id="gems"></div>
+        <span class="val" id="wellV">the well 100%</span>
+      </div>
+    </div>
+    <p id="status" class="status"></p>
+    <div class="actions">
+      <button id="go" class="btn" disabled>Step through</button>
+      <button id="morning" class="btn dawn" disabled>Let the morning in</button>
+    </div>
+  </section>
+
+  <section id="trip" class="scr" aria-label="Inside">
+    <i id="tProg" class="prog"></i>
+    <div class="who"><span id="tWho"></span><span id="tPlace" class="dim"></span></div>
+    <div class="light"><span id="tGain" class="gain"></span><span id="tLight">0</span><span class="lab">light</span></div>
+    <div id="tCard" class="tcard">
+      <p class="eyebrow" id="tcCode"></p>
+      <h2 id="tcPlace"></h2>
+      <p class="hint" id="tcHint"></p>
+    </div>
+    <p id="tCap" class="cap"></p>
+    <div class="foot">
+      <div class="mini"><span class="lab">The well</span><div class="bar2"><i id="tWell"></i></div></div>
+      <button id="leave" class="link">Leave early</button>
+    </div>
+    <span id="gate" class="gate">again</span>
+  </section>
+
+  <section id="card" class="scr" aria-label="Afterwards">
+    <div class="anchor">
+      <p class="eyebrow" id="cEyebrow"></p>
+      <h2 id="cBig"></h2>
+      <p class="lede" id="cLine"></p>
+      <dl class="stats" id="cStats"></dl>
+      <div id="cShards" class="lessons"></div>
+      <button id="back" class="btn solid">Back to the night</button>
+    </div>
+  </section>
+
+  <section id="dawn" class="scr" aria-label="Morning">
+    <p id="dLine" class="dline"></p>
+    <div id="dEnd" class="anchor end">
+      <p class="eyebrow">Morning</p>
+      <h2>Level.</h2>
+      <p class="lede" id="dText"></p>
+      <div id="dLessons" class="lessons"></div>
+      <button id="again" class="btn solid">Begin again</button>
+    </div>
+  </section>
+
+  <p id="nogl" class="nogl" hidden>This game needs WebGL 2. Open it in a current version of Chrome, Edge, Firefox or Safari.</p>
+</main>
+<script>
+/*JS*/
+</script>
+</body>
+</html>

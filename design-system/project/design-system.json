@@ -1,0 +1,24 @@
+{
+ "v": 3,
+ "layout": "files",
+ "createdOnFiles": {
+  "v": 1,
+  "at": "2026-11-14T16:10:21.464Z"
+ },
+ "title": "Fourteen Doors Design System",
+ "namespace": "FourteenDoors",
+ "libraries": [],
+ "sections": {},
+ "groups": [],
+ "assetGroups": {},
+ "blobs": {},
+ "docs": {
+  "sections": []
+ },
+ "lastChange": {
+  "by": "Claude",
+  "at": "2026-11-14T16:10:21.469Z",
+  "via": "Claude",
+  "note": "First version, built from the game source."
+ }
+}

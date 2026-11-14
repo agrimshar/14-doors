@@ -1,0 +1,22 @@
+<!-- @dsCard group="Instrument" height=190 subtitle="The tide, the well, lights carried" -->
+<!DOCTYPE html><html><head><meta charset="utf-8"><link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..800;1,6..96,400..800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>*{box-sizing:border-box;margin:0}body{background:var(--ink);color:var(--paper);font:400 14px/1.5 var(--font-mono);padding:var(--space-6)}button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.console{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:56px;max-width:720px}
+.meter{display:flex;flex-direction:column;gap:9px}.meter.r{align-items:flex-end;text-align:right}
+.lab{font:500 11px/1.2 var(--font-mono);letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+.val{font:italic 400 18px/1 var(--font-display)}
+.beam{position:relative;width:190px;height:14px;border-bottom:1px solid var(--paper)}
+.zone{position:absolute;left:40%;width:20%;bottom:0;height:6px;border-inline:1px solid var(--paper)}
+.mk{position:absolute;left:72%;bottom:3px;width:9px;height:9px;margin-left:-4.5px;transform:rotate(45deg);background:var(--warn)}
+.gems{display:flex;gap:var(--space-2);height:14px;align-items:center}
+.gems i{width:11px;height:11px;transform:rotate(45deg);border:1px solid var(--dim)}
+.gems i.on{border-color:var(--c);background:var(--c);box-shadow:0 0 16px 1px var(--c)}
+.orbwrap{display:flex;flex-direction:column;align-items:center;gap:var(--space-2)}
+.orb{position:relative;width:104px;height:104px;border-radius:50%}
+.ring{position:absolute;inset:0;border-radius:50%;background:conic-gradient(var(--paper) 198deg,var(--faint) 0);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 2px));mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 2px))}
+.core{position:absolute;inset:16%;border-radius:50%;background:radial-gradient(circle at 50% 45%,#fff,var(--dawn) 45%,rgba(255,180,106,0) 72%);opacity:.6}
+</style></head><body><div class="console">
+<div class="meter r"><span class="lab">The tide</span><div class="beam"><i class="zone"></i><i class="mk"></i></div><span class="val">running high</span></div>
+<div class="orbwrap"><div class="orb"><i class="ring"></i><i class="core"></i></div><span class="lab">Hold to breathe</span></div>
+<div class="meter"><span class="lab">Lights carried</span><div class="gems"><i class="on" style="--c:var(--md-a)"></i><i class="on" style="--c:var(--ps-a)"></i><i class="on" style="--c:var(--cn-a)"></i><i></i><i></i></div><span class="val">the well 55%</span></div>
+</div></body></html>
